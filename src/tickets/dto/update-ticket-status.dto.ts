@@ -1,9 +1,8 @@
-import { IsEnum, IsString, IsOptional, IsBoolean } from 'class-validator';
-import { TicketStatus } from '../../entities/ticket.entity';
+import { IsUUID, IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class UpdateTicketStatusDto {
-  @IsEnum(TicketStatus)
-  status: TicketStatus;
+  @IsUUID()
+  statusId: string;
 
   @IsString()
   comment: string;

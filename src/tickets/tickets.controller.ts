@@ -9,11 +9,13 @@ import {
   UseGuards,
   Request,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
+import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -32,6 +34,32 @@ export class TicketsController {
   @Get()
   findAll(@Request() req) {
     return this.ticketsService.findAll(req.user.userId, req.user.role);
+  }
+
+  @Get('it-manager')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.IT_MANAGER)
+  findAllForITManager(
+    @Request() req,
+    @Query() filterDto: FilterTicketsDto,
+  ) {
+    return this.ticketsService.findAllForITManager(
+      req.user.userId,
+      filterDto,
+    );
+  }
+
+  @Get('employee')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.EMPLOYEE)
+  findLastRaisedTicketForEmployee(
+    @Request() req,
+    @Query() filterDto: FilterTicketsDto,
+  ) {
+    return this.ticketsService.findLastRaisedTicketForEmployee(
+      req.user.userId,
+      filterDto,
+    );
   }
 
   @Get(':id')

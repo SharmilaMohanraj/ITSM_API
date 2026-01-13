@@ -4,14 +4,18 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Ticket, TicketStatus } from '../entities/ticket.entity';
+import { Repository, FindOptionsWhere } from 'typeorm';
+import { Ticket } from '../entities/ticket.entity';
 import { User } from '../entities/user.entity';
 import { Comment } from '../entities/comment.entity';
 import { TicketHistory, ChangeType } from '../entities/ticket-history.entity';
+import { TicketCategory } from '../entities/ticket-category.entity';
+import { TicketStatus } from '../entities/ticket-status.entity';
+import { TicketPriority } from '../entities/ticket-priority.entity';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
+import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { UserRole } from '../entities/user.entity';
 
 @Injectable()
@@ -25,6 +29,12 @@ export class TicketsService {
     private commentRepository: Repository<Comment>,
     @InjectRepository(TicketHistory)
     private ticketHistoryRepository: Repository<TicketHistory>,
+    @InjectRepository(TicketCategory)
+    private categoryRepository: Repository<TicketCategory>,
+    @InjectRepository(TicketStatus)
+    private statusRepository: Repository<TicketStatus>,
+    @InjectRepository(TicketPriority)
+    private priorityRepository: Repository<TicketPriority>,
   ) {}
 
   private generateTicketNumber(): string {
@@ -42,14 +52,55 @@ export class TicketsService {
       throw new NotFoundException('User not found');
     }
 
+    // Validate category, priority, and status
+    const category = await this.categoryRepository.findOne({
+      where: { id: createTicketDto.categoryId },
+    });
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const priority = await this.priorityRepository.findOne({
+      where: { id: createTicketDto.priorityId },
+    });
+    if (!priority) {
+      throw new NotFoundException('Priority not found');
+    }
+
+    let status: TicketStatus | null = null;
+    if (createTicketDto.statusId) {
+      status = await this.statusRepository.findOne({
+        where: { id: createTicketDto.statusId },
+      });
+      if (!status) {
+        throw new NotFoundException('Status not found');
+      }
+    } else {
+      // Get default "New" status
+      status = await this.statusRepository.findOne({
+        where: { name: 'New' },
+      });
+      if (!status) {
+        throw new NotFoundException('Default status "New" not found');
+      }
+    }
+
     const ticketNumber = this.generateTicketNumber();
     const ticket = this.ticketRepository.create({
-      ...createTicketDto,
+      title: createTicketDto.title,
+      description: createTicketDto.description,
       ticketNumber,
       createdById: userId,
       createdBy,
       assignedToId: createTicketDto.assignedToId || null,
-      status: createTicketDto.status || TicketStatus.NEW,
+      categoryId: createTicketDto.categoryId,
+      category,
+      priorityId: createTicketDto.priorityId,
+      priority,
+      statusId: status.id,
+      status,
+      conversationContext: createTicketDto.conversationContext,
+      summary: createTicketDto.summary,
       slaResponseBreached: false,
       slaResolutionBreached: false,
     });
@@ -89,20 +140,20 @@ export class TicketsService {
     // Return ticket with relations including history
     return this.ticketRepository.findOne({
       where: { id: savedTicket.id },
-      relations: ['assignedTo', 'createdBy', 'history'],
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority', 'history'],
     });
   }
 
   async findAll(userId: string, userRole: UserRole): Promise<Ticket[]> {
     if (userRole === UserRole.IT_MANAGER) {
       return this.ticketRepository.find({
-        relations: ['assignedTo', 'createdBy'],
+        relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
         order: { createdAt: 'DESC' },
       });
     } else {
       return this.ticketRepository.find({
         where: [{ assignedToId: userId }, { createdById: userId }],
-        relations: ['assignedTo', 'createdBy'],
+        relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
         order: { createdAt: 'DESC' },
       });
     }
@@ -111,7 +162,7 @@ export class TicketsService {
   async findOne(id: string, userId: string, userRole: UserRole): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
-      relations: ['assignedTo', 'createdBy'],
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
     });
 
     if (!ticket) {
@@ -168,7 +219,14 @@ export class TicketsService {
       ticket.assignedToId = updateTicketDto.assignedToId;
     }
 
-    if (updateTicketDto.status && updateTicketDto.status !== ticket.status) {
+    if (updateTicketDto.statusId && updateTicketDto.statusId !== ticket.statusId) {
+      const newStatus = await this.statusRepository.findOne({
+        where: { id: updateTicketDto.statusId },
+      });
+      if (!newStatus) {
+        throw new NotFoundException('Status not found');
+      }
+
       // Create history entry for status change
       const statusHistory = this.ticketHistoryRepository.create({
         ticketId: ticket.id,
@@ -177,23 +235,31 @@ export class TicketsService {
         changedBy: user,
         changeType: ChangeType.STATUS_CHANGED,
         fieldName: 'status',
-        oldValue: ticket.status,
-        newValue: updateTicketDto.status,
+        oldValue: ticket.status?.name || ticket.statusId,
+        newValue: newStatus.name,
       });
       historyEntries.push(statusHistory);
 
-      ticket.status = updateTicketDto.status;
+      ticket.status = newStatus;
+      ticket.statusId = newStatus.id;
 
-      if (updateTicketDto.status === TicketStatus.RESOLVED && !ticket.resolvedAt) {
+      if (newStatus.name === 'Resolved' && !ticket.resolvedAt) {
         ticket.resolvedAt = new Date();
       }
 
-      if (updateTicketDto.status === TicketStatus.CLOSED && !ticket.closedAt) {
+      if (newStatus.name === 'Closed' && !ticket.closedAt) {
         ticket.closedAt = new Date();
       }
     }
 
-    if (updateTicketDto.priority && updateTicketDto.priority !== ticket.priority) {
+    if (updateTicketDto.priorityId && updateTicketDto.priorityId !== ticket.priorityId) {
+      const newPriority = await this.priorityRepository.findOne({
+        where: { id: updateTicketDto.priorityId },
+      });
+      if (!newPriority) {
+        throw new NotFoundException('Priority not found');
+      }
+
       // Create history entry for priority change
       const priorityHistory = this.ticketHistoryRepository.create({
         ticketId: ticket.id,
@@ -202,13 +268,23 @@ export class TicketsService {
         changedBy: user,
         changeType: ChangeType.PRIORITY_CHANGED,
         fieldName: 'priority',
-        oldValue: ticket.priority,
-        newValue: updateTicketDto.priority,
+        oldValue: ticket.priority?.name || ticket.priorityId,
+        newValue: newPriority.name,
       });
       historyEntries.push(priorityHistory);
+
+      ticket.priority = newPriority;
+      ticket.priorityId = newPriority.id;
     }
 
-    if (updateTicketDto.category && updateTicketDto.category !== ticket.category) {
+    if (updateTicketDto.categoryId && updateTicketDto.categoryId !== ticket.categoryId) {
+      const newCategory = await this.categoryRepository.findOne({
+        where: { id: updateTicketDto.categoryId },
+      });
+      if (!newCategory) {
+        throw new NotFoundException('Category not found');
+      }
+
       // Create history entry for category change
       const categoryHistory = this.ticketHistoryRepository.create({
         ticketId: ticket.id,
@@ -217,10 +293,13 @@ export class TicketsService {
         changedBy: user,
         changeType: ChangeType.UPDATED,
         fieldName: 'category',
-        oldValue: ticket.category,
-        newValue: updateTicketDto.category,
+        oldValue: ticket.category?.name || ticket.categoryId,
+        newValue: newCategory.name,
       });
       historyEntries.push(categoryHistory);
+
+      ticket.category = newCategory;
+      ticket.categoryId = newCategory.id;
     }
 
     if (updateTicketDto.title && updateTicketDto.title !== ticket.title) {
@@ -289,13 +368,16 @@ export class TicketsService {
       }
     }
 
-    // Update ticket with all changes
-    Object.assign(ticket, {
-      ...updateTicketDto,
-      assignedToId: ticket.assignedToId,
-      slaResponseDue: ticket.slaResponseDue,
-      slaResolutionDue: ticket.slaResolutionDue,
-    });
+    // Update other fields
+    if (updateTicketDto.title) {
+      ticket.title = updateTicketDto.title;
+    }
+    if (updateTicketDto.description) {
+      ticket.description = updateTicketDto.description;
+    }
+    if (updateTicketDto.conversationContext) {
+      ticket.conversationContext = updateTicketDto.conversationContext;
+    }
 
     const savedTicket = await this.ticketRepository.save(ticket);
 
@@ -307,7 +389,7 @@ export class TicketsService {
     // Return ticket with relations including history
     return this.ticketRepository.findOne({
       where: { id: savedTicket.id },
-      relations: ['assignedTo', 'createdBy', 'history'],
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority', 'history'],
     });
   }
 
@@ -331,7 +413,7 @@ export class TicketsService {
   ): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
-      relations: ['assignedTo', 'createdBy'],
+      relations: ['assignedTo', 'createdBy', 'status'],
     });
 
     if (!ticket) {
@@ -343,18 +425,25 @@ export class TicketsService {
       throw new NotFoundException('User not found');
     }
 
+    const newStatus = await this.statusRepository.findOne({
+      where: { id: updateStatusDto.statusId },
+    });
+    if (!newStatus) {
+      throw new NotFoundException('Status not found');
+    }
+
     const oldStatus = ticket.status;
-    const newStatus = updateStatusDto.status;
 
     // Update ticket status
     ticket.status = newStatus;
+    ticket.statusId = newStatus.id;
 
     // Set resolved_at or closed_at if applicable
-    if (newStatus === TicketStatus.RESOLVED && !ticket.resolvedAt) {
+    if (newStatus.name === 'Resolved' && !ticket.resolvedAt) {
       ticket.resolvedAt = new Date();
     }
 
-    if (newStatus === TicketStatus.CLOSED && !ticket.closedAt) {
+    if (newStatus.name === 'Closed' && !ticket.closedAt) {
       ticket.closedAt = new Date();
     }
 
@@ -373,7 +462,7 @@ export class TicketsService {
     await this.commentRepository.save(comment);
 
     // Create ticket history entry for status change
-    if (oldStatus !== newStatus) {
+    if (oldStatus?.id !== newStatus.id) {
       const statusHistory = this.ticketHistoryRepository.create({
         ticketId: ticket.id,
         ticket,
@@ -381,8 +470,8 @@ export class TicketsService {
         changedBy: user,
         changeType: ChangeType.STATUS_CHANGED,
         fieldName: 'status',
-        oldValue: oldStatus,
-        newValue: newStatus,
+        oldValue: oldStatus?.name || oldStatus?.id || 'Unknown',
+        newValue: newStatus.name,
       });
       await this.ticketHistoryRepository.save(statusHistory);
     }
@@ -402,7 +491,64 @@ export class TicketsService {
     // Return ticket with relations
     return this.ticketRepository.findOne({
       where: { id: ticket.id },
-      relations: ['assignedTo', 'createdBy', 'comments', 'history'],
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority', 'comments', 'history'],
+    });
+  }
+
+  async findAllForITManager(
+    userId: string,
+    filterDto: FilterTicketsDto,
+  ): Promise<Ticket[]> {
+    const whereConditions: FindOptionsWhere<Ticket>[] = [
+      { assignedToId: userId },
+      { assignedToId: null },
+    ];
+
+    // Apply filters if provided
+    const baseConditions = whereConditions.map((condition) => {
+      const filteredCondition = { ...condition };
+      if (filterDto.statusId) {
+        filteredCondition.statusId = filterDto.statusId;
+      }
+      if (filterDto.categoryId) {
+        filteredCondition.categoryId = filterDto.categoryId;
+      }
+      if (filterDto.priorityId) {
+        filteredCondition.priorityId = filterDto.priorityId;
+      }
+      return filteredCondition;
+    });
+
+    return this.ticketRepository.find({
+      where: baseConditions,
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findLastRaisedTicketForEmployee(
+    userId: string,
+    filterDto: FilterTicketsDto,
+  ): Promise<Ticket | null> {
+    const whereCondition: FindOptionsWhere<Ticket> = {
+      createdById: userId,
+    };
+
+    // Apply filters if provided
+    if (filterDto.statusId) {
+      whereCondition.statusId = filterDto.statusId;
+    }
+    if (filterDto.categoryId) {
+      whereCondition.categoryId = filterDto.categoryId;
+    }
+    if (filterDto.priorityId) {
+      whereCondition.priorityId = filterDto.priorityId;
+    }
+
+    return this.ticketRepository.findOne({
+      where: whereCondition,
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
+      order: { createdAt: 'DESC' },
     });
   }
 }

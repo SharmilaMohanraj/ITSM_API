@@ -1,8 +1,8 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
@@ -39,6 +39,7 @@ export class UsersService {
         'fullName',
         'role',
         'teamId',
+        'department',
         'skills',
         'isAvailable',
         'createdAt',
@@ -46,8 +47,8 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string): Promise<User> {
-    return this.userRepository.findOne({
+  async findOne(id: string, userId: string, userRole: UserRole): Promise<User> {
+    const user = await this.userRepository.findOne({
       where: { id },
       select: [
         'id',
@@ -55,11 +56,23 @@ export class UsersService {
         'fullName',
         'role',
         'teamId',
+        'department',
         'skills',
         'isAvailable',
         'createdAt',
       ],
     });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // IT Manager can access any user, regular users can only access their own profile
+    if (userRole !== UserRole.IT_MANAGER && id !== userId) {
+      throw new ForbiddenException('You can only access your own profile');
+    }
+
+    return user;
   }
 
   async findByEmail(email: string): Promise<User | null> {

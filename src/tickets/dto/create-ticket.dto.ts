@@ -1,16 +1,10 @@
 import {
-  IsEnum,
   IsOptional,
   IsString,
   IsUUID,
   IsObject,
   IsDateString,
 } from 'class-validator';
-import {
-  TicketCategory,
-  TicketPriority,
-  TicketStatus,
-} from '../../entities/ticket.entity';
 
 export class CreateTicketDto {
   @IsString()
@@ -20,15 +14,15 @@ export class CreateTicketDto {
   @IsString()
   description?: string;
 
-  @IsEnum(TicketCategory)
-  category: TicketCategory;
+  @IsUUID()
+  categoryId: string;
 
-  @IsEnum(TicketPriority)
-  priority: TicketPriority;
+  @IsUUID()
+  priorityId: string;
 
   @IsOptional()
-  @IsEnum(TicketStatus)
-  status?: TicketStatus;
+  @IsUUID()
+  statusId?: string;
 
   @IsOptional()
   @IsUUID()
@@ -37,6 +31,10 @@ export class CreateTicketDto {
   @IsOptional()
   @IsObject()
   conversationContext?: Record<string, any>;
+
+  @IsOptional()
+  @IsObject()
+  summary?: Record<string, any>;
 
   @IsOptional()
   @IsDateString()

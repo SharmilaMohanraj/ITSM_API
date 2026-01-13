@@ -39,6 +39,9 @@ export class User {
   })
   role: UserRole;
 
+  @Column({ nullable: true })
+  department: string;
+
   @Column({ name: 'team_id', nullable: true })
   teamId: string;
 

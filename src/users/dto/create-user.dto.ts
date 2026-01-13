@@ -25,6 +25,10 @@ export class CreateUserDto {
   role: UserRole;
 
   @IsOptional()
+  @IsString()
+  department?: string;
+
+  @IsOptional()
   @IsUUID()
   teamId?: string;
 

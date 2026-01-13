@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -38,10 +39,9 @@ export class UsersController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.IT_MANAGER)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.findOne(id);
+  @UseGuards(JwtAuthGuard)
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.usersService.findOne(id, req.user.userId, req.user.role);
   }
 }
 

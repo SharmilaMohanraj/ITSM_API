@@ -12,35 +12,9 @@ import { User } from './user.entity';
 import { Comment } from './comment.entity';
 import { Attachment } from './attachment.entity';
 import { TicketHistory } from './ticket-history.entity';
-
-export enum TicketCategory {
-  HARDWARE = 'Hardware',
-  SOFTWARE = 'Software',
-  NETWORK = 'Network',
-  ACCESS_PERMISSIONS = 'Access and Permissions',
-  INFRASTRUCTURE = 'Infrastructure',
-  SECURITY = 'Security',
-  REQUEST = 'Request',
-}
-
-export enum TicketPriority {
-  CRITICAL = 'Critical',
-  HIGH = 'High',
-  MEDIUM = 'Medium',
-  LOW = 'Low',
-}
-
-export enum TicketStatus {
-  NEW = 'New',
-  ASSIGNED = 'Assigned',
-  IN_PROGRESS = 'In Progress',
-  WAITING = 'Waiting',
-  ON_HOLD = 'On Hold',
-  RESOLVED = 'Resolved',
-  CLOSED = 'Closed',
-  CANCELLED = 'Cancelled',
-  ESCALATED = 'Escalated',
-}
+import { TicketCategory } from './ticket-category.entity';
+import { TicketStatus } from './ticket-status.entity';
+import { TicketPriority } from './ticket-priority.entity';
 
 @Entity('tickets')
 export class Ticket {
@@ -57,23 +31,25 @@ export class Ticket {
   @Column('text', { nullable: true })
   description: string;
 
-  @Column({
-    type: 'enum',
-    enum: TicketCategory,
-  })
+  @Column({ name: 'category_id', nullable: true })
+  categoryId: string;
+
+  @ManyToOne(() => TicketCategory, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
   category: TicketCategory;
 
-  @Column({
-    type: 'enum',
-    enum: TicketPriority,
-  })
+  @Column({ name: 'priority_id', nullable: true })
+  priorityId: string;
+
+  @ManyToOne(() => TicketPriority, { nullable: true })
+  @JoinColumn({ name: 'priority_id' })
   priority: TicketPriority;
 
-  @Column({
-    type: 'enum',
-    enum: TicketStatus,
-    default: TicketStatus.NEW,
-  })
+  @Column({ name: 'status_id', nullable: true })
+  statusId: string;
+
+  @ManyToOne(() => TicketStatus, { nullable: true })
+  @JoinColumn({ name: 'status_id' })
   status: TicketStatus;
 
   @Column({ name: 'created_by', nullable: true })
