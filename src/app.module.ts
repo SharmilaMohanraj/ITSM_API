@@ -12,10 +12,12 @@ import { TicketHistory } from './entities/ticket-history.entity';
 import { TicketCategory } from './entities/ticket-category.entity';
 import { TicketStatus } from './entities/ticket-status.entity';
 import { TicketPriority } from './entities/ticket-priority.entity';
+import { Notification } from './entities/notification.entity';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { LookupModule } from './lookup/lookup.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { LookupModule } from './lookup/lookup.module';
         TicketCategory,
         TicketStatus,
         TicketPriority,
+        Notification,
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
@@ -47,6 +50,7 @@ import { LookupModule } from './lookup/lookup.module';
     AuthModule,
     TicketsModule,
     LookupModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -17,6 +17,7 @@ import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
 import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { UserRole } from '../entities/user.entity';
+import { RabbitMQService } from '../notifications/rabbitmq.service';
 
 @Injectable()
 export class TicketsService {
@@ -35,6 +36,7 @@ export class TicketsService {
     private statusRepository: Repository<TicketStatus>,
     @InjectRepository(TicketPriority)
     private priorityRepository: Repository<TicketPriority>,
+    private rabbitMQService: RabbitMQService,
   ) {}
 
   private generateTicketNumber(): string {
@@ -250,6 +252,8 @@ export class TicketsService {
       if (newStatus.name === 'Closed' && !ticket.closedAt) {
         ticket.closedAt = new Date();
       }
+
+      // Status change event will be published after ticket is saved
     }
 
     if (updateTicketDto.priorityId && updateTicketDto.priorityId !== ticket.priorityId) {
@@ -386,11 +390,25 @@ export class TicketsService {
       await this.ticketHistoryRepository.save(historyEntries);
     }
 
-    // Return ticket with relations including history
-    return this.ticketRepository.findOne({
+    // Get the updated ticket with relations
+    const updatedTicket = await this.ticketRepository.findOne({
       where: { id: savedTicket.id },
       relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority', 'history'],
     });
+
+    // Publish status change event if status was updated
+    if (updateTicketDto.statusId && updatedTicket.status) {
+      const statusHistory = historyEntries.find((h) => h.fieldName === 'status');
+      if (statusHistory) {
+        await this.publishStatusChangeEvent(
+          updatedTicket,
+          statusHistory.oldValue?.toString() || 'Unknown',
+          updatedTicket.status.name,
+        );
+      }
+    }
+
+    return updatedTicket;
   }
 
   async remove(id: string, userId: string, userRole: UserRole): Promise<void> {
@@ -474,6 +492,14 @@ export class TicketsService {
         newValue: newStatus.name,
       });
       await this.ticketHistoryRepository.save(statusHistory);
+
+      // Publish status change event to RabbitMQ
+      await this.publishStatusChangeEvent(
+        updatedTicket,
+        oldStatus?.name || 'Unknown',
+        newStatus.name,
+        updateStatusDto.comment,
+      );
     }
 
     // Create ticket history entry for comment
@@ -550,6 +576,42 @@ export class TicketsService {
       relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  private async publishStatusChangeEvent(
+    ticket: Ticket,
+    oldStatus: string,
+    newStatus: string,
+    comment?: string,
+  ): Promise<void> {
+    try {
+      // Get the ticket with all relations
+      const fullTicket = await this.ticketRepository.findOne({
+        where: { id: ticket.id },
+        relations: ['createdBy', 'assignedTo', 'status'],
+      });
+
+      if (!fullTicket || !fullTicket.createdBy) {
+        return;
+      }
+
+      // Determine which user to notify (prefer assigned user, fallback to creator)
+      const userToNotify = fullTicket.assignedTo || fullTicket.createdBy;
+
+      await this.rabbitMQService.publishTicketStatusChange({
+        userId: userToNotify.id,
+        userEmail: userToNotify.email,
+        userName: userToNotify.fullName,
+        ticketId: fullTicket.id,
+        ticketNumber: fullTicket.ticketNumber,
+        oldStatus,
+        newStatus,
+        comment,
+      });
+    } catch (error) {
+      // Log error but don't throw - notification failure shouldn't break ticket update
+      console.error('Failed to publish status change event:', error);
+    }
   }
 }
 
