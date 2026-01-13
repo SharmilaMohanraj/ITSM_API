@@ -93,6 +93,9 @@ export class Ticket {
   @Column('jsonb', { name: 'conversation_context', nullable: true })
   conversationContext: Record<string, any>;
 
+  @Column('jsonb', { name: 'summary', nullable: true })
+  summary: Record<string, any>;
+
   @Column({ name: 'sla_response_due', type: 'timestamp', nullable: true })
   slaResponseDue: Date;
 
