@@ -15,7 +15,10 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({
+      where: { email },
+      relations: ['roles'],
+    });
     if (user && (await bcrypt.compare(password, user.passwordHash))) {
       const { passwordHash: _, ...result } = user;
       return result;
@@ -28,14 +31,15 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const payload = { email: user.email, sub: user.id, role: user.role };
+    const roleKeys = user.roles?.map((role) => role.key) ?? [];
+    const payload = { email: user.email, sub: user.id, roles: roleKeys };
     return {
       access_token: this.jwtService.sign(payload),
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role,
+        roles: roleKeys,
       },
     };
   }

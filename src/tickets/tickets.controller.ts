@@ -19,7 +19,6 @@ import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '../entities/user.entity';
 
 @Controller('tickets')
 @UseGuards(JwtAuthGuard)
@@ -33,12 +32,12 @@ export class TicketsController {
 
   @Get()
   findAll(@Request() req) {
-    return this.ticketsService.findAll(req.user.userId, req.user.role);
+    return this.ticketsService.findAll(req.user.userId, req.user.roles);
   }
 
   @Get('it-manager')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.IT_MANAGER)
+  @Roles('it_manager')
   findAllForITManager(
     @Request() req,
     @Query() filterDto: FilterTicketsDto,
@@ -51,7 +50,7 @@ export class TicketsController {
 
   @Get('employee')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.EMPLOYEE)
+  @Roles('employee')
   findLastRaisedTicketForEmployee(
     @Request() req,
     @Query() filterDto: FilterTicketsDto,
@@ -64,12 +63,12 @@ export class TicketsController {
 
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
-    return this.ticketsService.findOne(id, req.user.userId, req.user.role);
+    return this.ticketsService.findOne(id, req.user.userId, req.user.roles);
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.IT_MANAGER, UserRole.EMPLOYEE)
+  @Roles('it_manager', 'employee')
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTicketDto: UpdateTicketDto,
@@ -79,13 +78,13 @@ export class TicketsController {
       id,
       updateTicketDto,
       req.user.userId,
-      req.user.role,
+      req.user.roles,
     );
   }
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.IT_MANAGER)
+  @Roles('it_manager')
   updateStatusWithComment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateStatusDto: UpdateTicketStatusDto,
@@ -100,9 +99,9 @@ export class TicketsController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.IT_MANAGER)
+  @Roles('it_manager')
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
-    return this.ticketsService.remove(id, req.user.userId, req.user.role);
+    return this.ticketsService.remove(id, req.user.userId, req.user.roles);
   }
 }
 

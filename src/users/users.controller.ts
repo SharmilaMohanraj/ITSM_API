@@ -13,7 +13,6 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '../entities/user.entity';
 
 @Controller('users')
 export class UsersController {
@@ -21,19 +20,21 @@ export class UsersController {
 
   @Post('register')
   create(@Body() createUserDto: CreateUserDto) {
+    // Public registration - only creates employees
     return this.usersService.create(createUserDto);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.IT_MANAGER)
-  createByManager(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  @Roles('super_admin')
+  createBySuperAdmin(@Body() createUserDto: CreateUserDto, @Request() req) {
+    // Only super admin can create IT Managers
+    return this.usersService.create(createUserDto, req.user.roles);
   }
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.IT_MANAGER)
+  @Roles('it_manager')
   findAll() {
     return this.usersService.findAll();
   }
@@ -41,7 +42,7 @@ export class UsersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
-    return this.usersService.findOne(id, req.user.userId, req.user.role);
+    return this.usersService.findOne(id, req.user.userId, req.user.roles);
   }
 }
 

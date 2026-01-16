@@ -1,0 +1,5 @@
+{
+  "subject": "Ticket {{ticketNumber}} Created Successfully",
+  "text": "Hello {{userName}},\n\nYour ticket {{ticketNumber}} has been created successfully.\n\nTitle: {{ticketTitle}}\nCategory: {{ticketCategory}}\nPriority: {{ticketPriority}}\nStatus: {{ticketStatus}}\n\nWe will review your ticket and get back to you soon.\n\nThank you for using our ITSM system.",
+  "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #17a2b8;\">Ticket Created</h2>\n  <p>Hello {{userName}},</p>\n  <p>Your ticket <strong>{{ticketNumber}}</strong> has been created successfully.</p>\n  <div style=\"background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;\">\n    <p><strong>Title:</strong> {{ticketTitle}}</p>\n    <p><strong>Category:</strong> {{ticketCategory}}</p>\n    <p><strong>Priority:</strong> {{ticketPriority}}</p>\n    <p><strong>Status:</strong> {{ticketStatus}}</p>\n  </div>\n  <p>We will review your ticket and get back to you soon.</p>\n  <p>Thank you for using our ITSM system.</p>\n</div>"
+}

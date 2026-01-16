@@ -5,17 +5,23 @@ import {
   CreateDateColumn,
   ManyToOne,
   OneToMany,
+  ManyToMany,
   JoinColumn,
+  JoinTable,
 } from 'typeorm';
 import { Team } from './team.entity';
 import { Ticket } from './ticket.entity';
 import { Comment } from './comment.entity';
 import { Attachment } from './attachment.entity';
 import { TicketHistory } from './ticket-history.entity';
+import { Role } from './role.entity';
+import { UserCategory } from './user-category.entity';
 
+// Keep enum for backward compatibility - now maps to role keys
 export enum UserRole {
   EMPLOYEE = 'employee',
   IT_MANAGER = 'it_manager',
+  SUPER_ADMIN = 'super_admin',
 }
 
 @Entity('users')
@@ -32,12 +38,13 @@ export class User {
   @Column({ name: 'full_name' })
   fullName: string;
 
-  @Column({
-    type: 'enum',
-    enum: UserRole,
-    default: UserRole.EMPLOYEE,
+  @ManyToMany(() => Role, (role) => role.users)
+  @JoinTable({
+    name: 'user_roles',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
-  role: UserRole;
+  roles: Role[];
 
   @Column({ nullable: true })
   department: string;
@@ -69,6 +76,9 @@ export class User {
 
   @OneToMany(() => TicketHistory, (history) => history.changedBy)
   ticketHistory: TicketHistory[];
+
+  @OneToMany(() => UserCategory, (userCategory) => userCategory.user)
+  userCategories: UserCategory[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

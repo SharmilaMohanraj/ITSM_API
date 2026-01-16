@@ -6,11 +6,12 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { EmailService } from './email.service';
 import { RabbitMQService } from './rabbitmq.service';
+import { TemplateService } from './template.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Notification, User])],
   controllers: [NotificationsController],
-  providers: [NotificationsService, EmailService, RabbitMQService],
-  exports: [NotificationsService, RabbitMQService],
+  providers: [NotificationsService, EmailService, RabbitMQService, TemplateService],
+  exports: [NotificationsService, EmailService, RabbitMQService, TemplateService],
 })
 export class NotificationsModule {}

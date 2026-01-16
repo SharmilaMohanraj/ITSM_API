@@ -13,11 +13,14 @@ import { TicketCategory } from './entities/ticket-category.entity';
 import { TicketStatus } from './entities/ticket-status.entity';
 import { TicketPriority } from './entities/ticket-priority.entity';
 import { Notification } from './entities/notification.entity';
+import { Role } from './entities/role.entity';
+import { UserCategory } from './entities/user-category.entity';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { LookupModule } from './lookup/lookup.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -42,6 +45,8 @@ import { NotificationsModule } from './notifications/notifications.module';
         TicketStatus,
         TicketPriority,
         Notification,
+        Role,
+        UserCategory,
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
@@ -51,6 +56,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     TicketsModule,
     LookupModule,
     NotificationsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

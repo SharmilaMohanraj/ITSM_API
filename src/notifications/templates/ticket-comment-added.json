@@ -1,0 +1,5 @@
+{
+  "subject": "New Comment on Ticket {{ticketNumber}}",
+  "text": "Hello {{userName}},\n\nA new comment has been added to ticket {{ticketNumber}}.\n\nComment by: {{commentAuthor}}\nComment: {{comment}}\n\nYou can view the full conversation in the ticket details.\n\nThank you for using our ITSM system.",
+  "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #6c757d;\">New Comment Added</h2>\n  <p>Hello {{userName}},</p>\n  <p>A new comment has been added to ticket <strong>{{ticketNumber}}</strong>.</p>\n  <div style=\"background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;\">\n    <p><strong>Comment by:</strong> {{commentAuthor}}</p>\n    <p><strong>Comment:</strong></p>\n    <p style=\"margin-left: 20px;\">{{comment}}</p>\n  </div>\n  <p>You can view the full conversation in the ticket details.</p>\n  <p>Thank you for using our ITSM system.</p>\n</div>"
+}

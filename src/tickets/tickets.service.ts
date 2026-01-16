@@ -16,7 +16,6 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
 import { FilterTicketsDto } from './dto/filter-tickets.dto';
-import { UserRole } from '../entities/user.entity';
 import { RabbitMQService } from '../notifications/rabbitmq.service';
 
 @Injectable()
@@ -146,8 +145,9 @@ export class TicketsService {
     });
   }
 
-  async findAll(userId: string, userRole: UserRole): Promise<Ticket[]> {
-    if (userRole === UserRole.IT_MANAGER) {
+  async findAll(userId: string, userRoleKeys: string[]): Promise<Ticket[]> {
+    const isITManager = userRoleKeys.includes('it_manager');
+    if (isITManager) {
       return this.ticketRepository.find({
         relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
         order: { createdAt: 'DESC' },
@@ -161,7 +161,7 @@ export class TicketsService {
     }
   }
 
-  async findOne(id: string, userId: string, userRole: UserRole): Promise<Ticket> {
+  async findOne(id: string, userId: string, userRoleKeys: string[]): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
       relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
@@ -171,8 +171,9 @@ export class TicketsService {
       throw new NotFoundException('Ticket not found');
     }
 
+    const isITManager = userRoleKeys.includes('it_manager');
     if (
-      userRole === UserRole.EMPLOYEE &&
+      !isITManager &&
       ticket.assignedToId !== userId &&
       ticket.createdById !== userId
     ) {
@@ -186,9 +187,9 @@ export class TicketsService {
     id: string,
     updateTicketDto: UpdateTicketDto,
     userId: string,
-    userRole: UserRole,
+    userRoleKeys: string[],
   ): Promise<Ticket> {
-    const ticket = await this.findOne(id, userId, userRole);
+    const ticket = await this.findOne(id, userId, userRoleKeys);
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -411,8 +412,9 @@ export class TicketsService {
     return updatedTicket;
   }
 
-  async remove(id: string, userId: string, userRole: UserRole): Promise<void> {
-    if (userRole !== UserRole.IT_MANAGER) {
+  async remove(id: string, userId: string, userRoleKeys: string[]): Promise<void> {
+    const isITManager = userRoleKeys.includes('it_manager');
+    if (!isITManager) {
       throw new ForbiddenException('Only IT managers can delete tickets');
     }
 
