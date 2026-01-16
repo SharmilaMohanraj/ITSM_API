@@ -19,4 +19,9 @@ export class LookupController {
   getPriorities() {
     return this.lookupService.findAllPriorities();
   }
+
+  @Get('roles')
+  getRoles() {
+    return this.lookupService.findAllRoles();
+  }
 }

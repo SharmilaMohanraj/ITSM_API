@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { TicketCategory } from '../entities/ticket-category.entity';
 import { TicketStatus } from '../entities/ticket-status.entity';
 import { TicketPriority } from '../entities/ticket-priority.entity';
+import { Role } from '../entities/role.entity';
 
 @Injectable()
 export class LookupService {
@@ -14,6 +15,8 @@ export class LookupService {
     private statusRepository: Repository<TicketStatus>,
     @InjectRepository(TicketPriority)
     private priorityRepository: Repository<TicketPriority>,
+    @InjectRepository(Role)
+    private roleRepository: Repository<Role>,
   ) {}
 
   async findAllCategories(): Promise<TicketCategory[]> {
@@ -34,6 +37,12 @@ export class LookupService {
     return this.priorityRepository.find({
       where: { isActive: true },
       order: { order: 'ASC', name: 'ASC' },
+    });
+  }
+
+  async findAllRoles(): Promise<Role[]> {
+    return this.roleRepository.find({
+      order: { name: 'ASC' },
     });
   }
 }
