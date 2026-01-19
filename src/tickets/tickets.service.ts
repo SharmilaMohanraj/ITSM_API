@@ -61,11 +61,22 @@ export class TicketsService {
       throw new NotFoundException('Category not found');
     }
 
-    const priority = await this.priorityRepository.findOne({
-      where: { id: createTicketDto.priorityId },
-    });
-    if (!priority) {
-      throw new NotFoundException('Priority not found');
+    let priority: TicketPriority | null = null;
+    if (createTicketDto.priorityId) {
+      priority = await this.priorityRepository.findOne({
+        where: { id: createTicketDto.priorityId },
+      });
+      if (!priority) {
+        throw new NotFoundException('Priority not found');
+      }
+    } else {
+      // Get default "Medium" priority
+      priority = await this.priorityRepository.findOne({
+        where: { name: 'Medium' },
+      });
+      if (!priority) {
+        throw new NotFoundException('Default priority "Medium" not found');
+      }
     }
 
     let status: TicketStatus | null = null;
@@ -96,9 +107,9 @@ export class TicketsService {
       assignedToId: createTicketDto.assignedToId || null,
       categoryId: createTicketDto.categoryId,
       category,
-      priorityId: createTicketDto.priorityId,
+      priorityId: priority?.id || null,
       priority,
-      statusId: status.id,
+      statusId: status?.id || null,
       status,
       conversationContext: createTicketDto.conversationContext,
       summary: createTicketDto.summary,
