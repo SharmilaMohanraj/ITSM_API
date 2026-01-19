@@ -156,20 +156,42 @@ export class TicketsService {
     });
   }
 
-  async findAll(userId: string, userRoleKeys: string[]): Promise<Ticket[]> {
-    const isITManager = userRoleKeys.includes('it_manager');
-    if (isITManager) {
-      return this.ticketRepository.find({
-        relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
-        order: { createdAt: 'DESC' },
-      });
-    } else {
-      return this.ticketRepository.find({
-        where: [{ assignedToId: userId }, { createdById: userId }],
-        relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
-        order: { createdAt: 'DESC' },
-      });
-    }
+  async findAll(userId: string, filterDto: FilterTicketsDto): Promise<any> {
+    // Apply filters if provided
+    const whereConditions: FindOptionsWhere<Ticket>[] = [
+      { createdById: userId }
+    ];
+
+    // Apply filters if provided
+    const baseConditions = whereConditions.map((condition) => {
+      const filteredCondition = { ...condition };
+      if (filterDto.statusId) {
+        filteredCondition.statusId = filterDto.statusId;
+      }
+      if (filterDto.categoryId) {
+        filteredCondition.categoryId = filterDto.categoryId;
+      }
+      if (filterDto.priorityId) {
+        filteredCondition.priorityId = filterDto.priorityId;
+      }
+      return filteredCondition;
+    });
+    const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
+      where: baseConditions,
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
+      order: { createdAt: 'DESC' },
+      skip: (filterDto.page - 1) * filterDto.limit,
+      take: filterDto.limit,
+    });
+    return {
+      data,
+      meta: {
+        total,
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / filterDto.limit),
+      },
+    };
   }
 
   async findOne(id: string, userId: string, userRoleKeys: string[]): Promise<Ticket> {
@@ -549,7 +571,7 @@ export class TicketsService {
   async findAllForITManager(
     userId: string,
     filterDto: FilterTicketsDto,
-  ): Promise<Ticket[]> {
+  ): Promise<any> {
     const whereConditions: FindOptionsWhere<Ticket>[] = [
       { assignedToId: userId },
       { assignedToId: null },
@@ -570,11 +592,22 @@ export class TicketsService {
       return filteredCondition;
     });
 
-    return this.ticketRepository.find({
+    const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
       where: baseConditions,
       relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
       order: { createdAt: 'DESC' },
+      skip: (filterDto.page - 1) * filterDto.limit,
+      take: filterDto.limit,
     });
+    return {
+      data,
+      meta: {
+        total,
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / filterDto.limit),
+      },
+    };
   }
 
   async findLastRaisedTicketForEmployee(

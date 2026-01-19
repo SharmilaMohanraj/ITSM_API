@@ -31,8 +31,8 @@ export class TicketsController {
   }
 
   @Get()
-  findAll(@Request() req) {
-    return this.ticketsService.findAll(req.user.userId, req.user.roles);
+  findAll(@Request() req, @Query() filterDto: FilterTicketsDto) {
+    return this.ticketsService.findAll(req.user.userId, filterDto);
   }
 
   @Get('it-manager')
