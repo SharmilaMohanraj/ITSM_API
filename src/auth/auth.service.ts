@@ -43,5 +43,29 @@ export class AuthService {
       },
     };
   }
+
+  async validateToken(token: string) {
+    const decoded = this.jwtService.verify(token);
+    if (!decoded) {
+      throw new UnauthorizedException('Invalid token');
+    } 
+    const user = await this.userRepository.findOne({
+      where: { id: decoded.sub },
+      relations: ['roles'],
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const roleKeys = user.roles?.map((role) => role.key) ?? [];
+    return {
+      isValid: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        roles: roleKeys,
+      },
+    };
+  }
 }
 
