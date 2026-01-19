@@ -183,14 +183,26 @@ export class TicketsService {
     }
 
     const isITManager = userRoleKeys.includes('it_manager');
-    if (
-      !isITManager &&
-      ticket.assignedToId !== userId &&
-      ticket.createdById !== userId
-    ) {
+    if (!(ticket.createdById === userId || (isITManager && ticket.assignedToId === userId))) {
       throw new ForbiddenException('You do not have access to this ticket');
     }
 
+    return ticket;
+  }
+
+  async findOneByNumber(ticketNumber: string, userId: string, userRoleKeys: string[]): Promise<Ticket> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { ticketNumber },
+      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
+    });
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    const isITManager = userRoleKeys.includes('it_manager');
+    if (!(ticket.createdById === userId || (isITManager && ticket.assignedToId === userId))) {
+      throw new ForbiddenException('You do not have access to this ticket');
+    }
     return ticket;
   }
 

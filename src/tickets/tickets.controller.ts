@@ -66,6 +66,11 @@ export class TicketsController {
     return this.ticketsService.findOne(id, req.user.userId, req.user.roles);
   }
 
+  @Get('number/:ticketNumber')
+  findOneByNumber(@Param('ticketNumber') ticketNumber: string, @Request() req) {
+    return this.ticketsService.findOneByNumber(ticketNumber, req.user.userId, req.user.roles);
+  }
+
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('it_manager', 'employee')
