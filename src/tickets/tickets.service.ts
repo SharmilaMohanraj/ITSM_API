@@ -38,11 +38,11 @@ export class TicketsService {
     private rabbitMQService: RabbitMQService,
   ) {}
 
-  private generateTicketNumber(): string {
+  private generateTicketNumber(category: TicketCategory): string {
     const prefix = 'TKT';
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${prefix}-${timestamp}-${random}`;
+    return `${prefix}-${category.code}-${timestamp}-${random}`;
   }
 
   async create(createTicketDto: CreateTicketDto, userId: string): Promise<Ticket> {
@@ -97,7 +97,7 @@ export class TicketsService {
       }
     }
 
-    const ticketNumber = this.generateTicketNumber();
+    const ticketNumber = this.generateTicketNumber(category);
     const ticket = this.ticketRepository.create({
       title: createTicketDto.title,
       description: createTicketDto.description,

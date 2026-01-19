@@ -18,6 +18,7 @@ export class CreateTicketDto {
   categoryId: string;
 
   @IsUUID()
+  @IsOptional()
   priorityId: string;
 
   @IsOptional()

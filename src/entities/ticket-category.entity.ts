@@ -20,6 +20,9 @@ export class TicketCategory {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ nullable: true, unique: true })
+  code: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
