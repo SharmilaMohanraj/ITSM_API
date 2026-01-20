@@ -17,6 +17,9 @@ import { AddCategoryDto } from './dto/add-category.dto';
 import { RemoveCategoryDto } from './dto/remove-category.dto';
 import { FilterUsersDto } from './dto/filter-users.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
+import { TicketStatus } from 'src/entities/ticket-status.entity';
+import { NotificationRule, TicketEvent } from 'src/entities/notification-rule.entity';
+import { RabbitMQService } from '../notifications/rabbitmq.service';
 
 @Injectable()
 export class AdminService {
@@ -31,6 +34,11 @@ export class AdminService {
     private userCategoryRepository: Repository<UserCategory>,
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
+    @InjectRepository(TicketStatus)
+    private statusRepository: Repository<TicketStatus>,
+    @InjectRepository(NotificationRule)
+    private notificationRuleRepository: Repository<NotificationRule>,
+    private rabbitMQService: RabbitMQService,
   ) {}
 
   async addRoleToUser(addRoleDto: AddRoleDto): Promise<User> {
@@ -193,7 +201,7 @@ export class AdminService {
   async assignTicketToITManager(assignTicketDto: AssignTicketDto): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id: assignTicketDto.ticketId },
-      relations: ['category', 'assignedTo'],
+      relations: ['category', 'assignedTo', 'status'],
     });
 
     if (!ticket) {
@@ -231,6 +239,28 @@ export class AdminService {
     ticket.assignedTo = user;
     ticket.assignedToId = user.id;
 
+    const status = await this.statusRepository.findOne({ where: { name: 'Assigned' } });
+    
+    const notificationRule = await this.notificationRuleRepository.findOne({
+      where: {
+        event: TicketEvent.ASSIGN,
+      },
+    });
+    if (notificationRule) {
+    await this.rabbitMQService.publishTicketStatusChange({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      oldStatus: ticket.status.name,
+      newStatus: status.name,
+      comment: 'Ticket assigned to IT Manager',
+      event: TicketEvent.ASSIGN,
+      });
+    }
+
+    if (status) {
+      ticket.status = status;
+      ticket.statusId = status.id;
+    }
     return this.ticketRepository.save(ticket);
   }
 }

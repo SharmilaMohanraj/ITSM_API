@@ -3,16 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 import { EmailService } from './email.service';
 import { NotificationsService } from './notifications.service';
+import { TicketEvent } from 'src/entities/notification-rule.entity';
 
 export interface TicketStatusChangeEvent {
-  userId: string;
-  userEmail: string;
-  userName: string;
   ticketId: string;
   ticketNumber: string;
   oldStatus: string;
   newStatus: string;
   comment?: string;
+  event: TicketEvent;
+}
+
+export interface TicketCreateEvent {
+  ticketId: string;
+  ticketNumber: string;
+  categoryName: string;
+  priorityName: string;
+  event: TicketEvent;
 }
 
 @Injectable()
@@ -24,7 +31,6 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private configService: ConfigService,
-    private emailService: EmailService,
     private notificationsService: NotificationsService,
   ) {}
 
@@ -66,8 +72,12 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
       async (msg) => {
         if (msg) {
           try {
-            const event: TicketStatusChangeEvent = JSON.parse(msg.content.toString());
-            await this.handleTicketStatusChange(event);
+            const event: any = JSON.parse(msg.content.toString());
+            if (event.event === TicketEvent.STATUS_CHANGE || event.event === TicketEvent.ASSIGN) {
+              await this.handleTicketStatusChange(event);
+            } else if (event.event === TicketEvent.CREATE) {
+              await this.handleTicketCreateEvent(event);
+            }
             this.channel.ack(msg);
           } catch (error) {
             this.logger.error('Error processing message:', error);
@@ -93,35 +103,46 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async publishTicketCreateEvent(event: TicketCreateEvent): Promise<void> {
+    try {
+      const message = JSON.stringify(event);
+      this.channel.sendToQueue(this.queueName, Buffer.from(message), {
+        persistent: true,
+      });
+      this.logger.log(`Published ticket create event for ticket ${event.ticketNumber}`);
+    } catch (error) {
+      this.logger.error('Failed to publish message:', error);
+      throw error;
+    }
+  }
+
   private async handleTicketStatusChange(event: TicketStatusChangeEvent): Promise<void> {
     try {
       // Create notification in database
-      const message = `Ticket ${event.ticketNumber} status changed from ${event.oldStatus} to ${event.newStatus}`;
-      await this.notificationsService.create(event.userId, message, event.ticketId);
-
-      // Send email notification
-      if (event.newStatus.toLowerCase() === 'resolved') {
-        await this.emailService.sendTicketResolvedEmail(
-          event.userEmail,
-          event.userName,
-          event.ticketNumber,
-          event.comment,
-        );
+      let message;
+      if (event.event === TicketEvent.ASSIGN) {
+        message = `Ticket ${event.ticketNumber} assigned to IT Manager`;
       } else {
-        await this.emailService.sendTicketStatusChangeEmail(
-          event.userEmail,
-          event.userName,
-          event.ticketNumber,
-          event.oldStatus,
-          event.newStatus,
-        );
+        message = `Ticket ${event.ticketNumber} status changed from ${event.oldStatus} to ${event.newStatus}`;
       }
+      await this.notificationsService.create(message, event.event, event.oldStatus, event.newStatus, event.ticketId);
 
       this.logger.log(
         `Processed ticket status change notification for ticket ${event.ticketNumber}`,
       );
     } catch (error) {
       this.logger.error('Error handling ticket status change:', error);
+      throw error;
+    }
+  }
+
+  private async handleTicketCreateEvent(event: TicketCreateEvent): Promise<void> {
+    try {
+      // Create notification in database
+      const message = `Ticket ${event.ticketNumber} created in ${event.categoryName} category with ${event.priorityName} priority`;
+      await this.notificationsService.create(message, event.event, null, null, event.ticketId);
+    } catch (error) {
+      this.logger.error('Error handling ticket create:', error);
       throw error;
     }
   }

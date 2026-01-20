@@ -2,10 +2,13 @@ import { DataSource } from 'typeorm';
 import { TicketCategory } from '../../entities/ticket-category.entity';
 import { TicketPriority } from '../../entities/ticket-priority.entity';
 import { TicketStatus } from '../../entities/ticket-status.entity';
+import { NotificationRule, TicketEvent } from '../../entities/notification-rule.entity';
+import { RecipientType } from '../../entities/notification-rule.entity';
 
 interface CategorySeedData {
   name: string;
   description: string;
+  code: string;
 }
 
 interface PrioritySeedData {
@@ -19,34 +22,46 @@ interface StatusSeedData {
   description: string;
 }
 
+interface NotificationRuleSeedData {
+  event: TicketEvent;
+  recipientType: RecipientType[];
+}
+
 const TICKET_CATEGORIES: CategorySeedData[] = [
   {
     name: 'Hardware',
     description: 'Laptop, monitor, keyboard issues with typical resolution times',
+    code: 'HW',
   },
   {
     name: 'Software',
     description: 'Application crashes, installations, licensing',
+    code: 'SW',
   },
   {
     name: 'Network',
     description: 'VPN, WiFi, connectivity problems',
+    code: 'NW',
   },
   {
     name: 'Access and Permissions',
     description: 'Password resets, account access',
+    code: 'AP',
   },
   {
     name: 'Infrastructure',
     description: 'Servers, databases, cloud issues',
+    code: 'IS',
   },
-  {
+  { 
     name: 'Security',
     description: 'Malware, breaches, phishing',
+    code: 'ST',
   },
   {
     name: 'Request',
     description: 'New equipment, software purchases, service requests',
+    code: 'SR',
   },
 ];
 
@@ -112,6 +127,21 @@ const TICKET_STATUSES: StatusSeedData[] = [
   },
 ];
 
+const NOTIFICATION_RULES: NotificationRuleSeedData[] = [
+  {
+    event: TicketEvent.CREATE,
+    recipientType: [RecipientType.CREATED_BY, RecipientType.CATEGORY_IT_MANAGERS],
+  },
+  {
+    event: TicketEvent.STATUS_CHANGE,
+    recipientType: [RecipientType.CREATED_BY, RecipientType.ASSIGNED_TO],
+  },
+  {
+    event: TicketEvent.ASSIGN,
+    recipientType: [RecipientType.CREATED_BY, RecipientType.ASSIGNED_TO],
+  },
+];
+
 export async function seedTicketCategories(
   dataSource: DataSource,
 ): Promise<void> {
@@ -174,10 +204,29 @@ export async function seedTicketStatuses(
   }
 }
 
+export async function seedNotificationRules(
+  dataSource: DataSource,
+): Promise<void> {
+  const notificationRuleRepository = dataSource.getRepository(NotificationRule);
+  for (const notificationRuleData of NOTIFICATION_RULES) {
+    const existingNotificationRule = await notificationRuleRepository.findOne({
+      where: { event: notificationRuleData.event },
+    });
+    if (!existingNotificationRule) {
+      const notificationRule = notificationRuleRepository.create(notificationRuleData);
+      await notificationRuleRepository.save(notificationRule);
+      console.log(`✓ Seeded notification rule: ${notificationRuleData.event}`);
+    } else {
+      console.log(`⊘ Notification rule already exists: ${notificationRuleData.event}`);
+    }
+  }
+}
+
 export async function seedTicketLookups(
   dataSource: DataSource,
 ): Promise<void> {
   await seedTicketCategories(dataSource);
   await seedTicketPriorities(dataSource);
   await seedTicketStatuses(dataSource);
+  await seedNotificationRules(dataSource);
 }

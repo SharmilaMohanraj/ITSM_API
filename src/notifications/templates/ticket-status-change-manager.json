@@ -1,0 +1,5 @@
+{
+  "subject": "Ticket {{ticketNumber}} Status Updated",
+  "text": "Hello {{userName}},\n\nThe ticket {{ticketNumber}} status has been changed from {{oldStatus}} to {{newStatus}}.\n\nThank you for using our ITSM system.",
+  "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #333;\">Ticket Status Update</h2>\n  <p>Hello {{userName}},</p>\n  <p>The ticket <strong>{{ticketNumber}}</strong> status has been changed:</p>\n  <p style=\"background-color: #f5f5f5; padding: 15px; border-radius: 5px;\">\n    <strong>Previous Status:</strong> {{oldStatus}}<br>\n    <strong>New Status:</strong> {{newStatus}}\n  </p>\n  <p>Thank you for using our ITSM system.</p>\n</div>"
+}

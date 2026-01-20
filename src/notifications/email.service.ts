@@ -22,7 +22,7 @@ export class EmailService {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
       port: this.configService.get<number>('SMTP_PORT', 587),
-      secure: this.configService.get<boolean>('SMTP_SECURE', false),
+      secure: this.configService.get<number>('SMTP_PORT') === 465,//false for port 587 and true for port 465
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
@@ -54,8 +54,9 @@ export class EmailService {
     ticketNumber: string,
     oldStatus: string,
     newStatus: string,
+    templateName: string,
   ): Promise<void> {
-    const template = this.templateService.render('ticket-status-change', {
+    const template = this.templateService.render(templateName, {
       userName,
       ticketNumber,
       oldStatus,
@@ -74,9 +75,10 @@ export class EmailService {
     userEmail: string,
     userName: string,
     ticketNumber: string,
+    templateName: string,
     comment?: string,
   ): Promise<void> {
-    const template = this.templateService.render('ticket-resolved', {
+    const template = this.templateService.render(templateName, {
       userName,
       ticketNumber,
       comment,
@@ -97,8 +99,9 @@ export class EmailService {
     ticketTitle: string,
     ticketCategory: string,
     ticketPriority: string,
+    templateName: string,
   ): Promise<void> {
-    const template = this.templateService.render('ticket-assigned', {
+    const template = this.templateService.render(templateName, {
       userName,
       ticketNumber,
       ticketTitle,
@@ -122,8 +125,9 @@ export class EmailService {
     ticketCategory: string,
     ticketPriority: string,
     ticketStatus: string,
+    templateName: string,
   ): Promise<void> {
-    const template = this.templateService.render('ticket-created', {
+    const template = this.templateService.render(templateName, {
       userName,
       ticketNumber,
       ticketTitle,
@@ -140,25 +144,4 @@ export class EmailService {
     });
   }
 
-  async sendTicketCommentAddedEmail(
-    userEmail: string,
-    userName: string,
-    ticketNumber: string,
-    commentAuthor: string,
-    comment: string,
-  ): Promise<void> {
-    const template = this.templateService.render('ticket-comment-added', {
-      userName,
-      ticketNumber,
-      commentAuthor,
-      comment,
-    });
-
-    await this.sendEmail({
-      to: userEmail,
-      subject: template.subject,
-      text: template.text,
-      html: template.html,
-    });
-  }
 }

@@ -21,6 +21,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { LookupModule } from './lookup/lookup.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
+import { NotificationRule } from './entities/notification-rule.entity';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AdminModule } from './admin/admin.module';
         TicketStatus,
         TicketPriority,
         Notification,
+        NotificationRule,
         Role,
         UserCategory,
       ],

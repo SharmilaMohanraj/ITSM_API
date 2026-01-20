@@ -10,6 +10,7 @@ import { TicketPriority } from '../entities/ticket-priority.entity';
 import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { NotificationRule } from 'src/entities/notification-rule.entity';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       TicketCategory,
       TicketStatus,
       TicketPriority,
+      NotificationRule,
     ]),
     NotificationsModule,
   ],

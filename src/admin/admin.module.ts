@@ -7,7 +7,10 @@ import { Role } from '../entities/role.entity';
 import { TicketCategory } from '../entities/ticket-category.entity';
 import { UserCategory } from '../entities/user-category.entity';
 import { Ticket } from '../entities/ticket.entity';
-
+import { TicketStatus } from 'src/entities/ticket-status.entity';
+import { NotificationRule } from 'src/entities/notification-rule.entity';
+import { Notification } from 'src/entities/notification.entity';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -15,8 +18,12 @@ import { Ticket } from '../entities/ticket.entity';
       Role,
       TicketCategory,
       UserCategory,
-      Ticket,
+      Ticket, 
+      TicketStatus,
+      NotificationRule,
+      Notification,
     ]),
+    NotificationsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

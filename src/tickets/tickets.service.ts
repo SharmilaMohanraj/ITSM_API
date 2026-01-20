@@ -17,6 +17,7 @@ import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
 import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { RabbitMQService } from '../notifications/rabbitmq.service';
+import { NotificationRule, TicketEvent } from 'src/entities/notification-rule.entity';
 
 @Injectable()
 export class TicketsService {
@@ -35,6 +36,8 @@ export class TicketsService {
     private statusRepository: Repository<TicketStatus>,
     @InjectRepository(TicketPriority)
     private priorityRepository: Repository<TicketPriority>,
+    @InjectRepository(NotificationRule)
+    private notificationRuleRepository: Repository<NotificationRule>,
     private rabbitMQService: RabbitMQService,
   ) {}
 
@@ -149,6 +152,20 @@ export class TicketsService {
     });
     await this.ticketHistoryRepository.save(createHistory);
 
+    const notificationRule = await this.notificationRuleRepository.findOne({
+      where: {
+        event: TicketEvent.CREATE,
+      },
+    });
+    if (notificationRule) {
+    await this.rabbitMQService.publishTicketCreateEvent({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      categoryName: ticket.category.name,
+      priorityName: ticket.priority.name,
+      event: TicketEvent.CREATE,
+      });
+    }
     // Return ticket with relations including history
     return this.ticketRepository.findOne({
       where: { id: savedTicket.id },
@@ -656,16 +673,22 @@ export class TicketsService {
       // Determine which user to notify (prefer assigned user, fallback to creator)
       const userToNotify = fullTicket.assignedTo || fullTicket.createdBy;
 
+
+      const notificationRule = await this.notificationRuleRepository.findOne({
+        where: {
+          event: TicketEvent.STATUS_CHANGE,
+        },
+      });
+      if (notificationRule) {
       await this.rabbitMQService.publishTicketStatusChange({
-        userId: userToNotify.id,
-        userEmail: userToNotify.email,
-        userName: userToNotify.fullName,
         ticketId: fullTicket.id,
         ticketNumber: fullTicket.ticketNumber,
         oldStatus,
         newStatus,
         comment,
-      });
+        event: TicketEvent.STATUS_CHANGE,
+        });
+      }
     } catch (error) {
       // Log error but don't throw - notification failure shouldn't break ticket update
       console.error('Failed to publish status change event:', error);
