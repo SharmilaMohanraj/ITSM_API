@@ -221,7 +221,7 @@ const TICKET_STATUSES: StatusSeedData[] = [
 const NOTIFICATION_RULES: NotificationRuleSeedData[] = [
   {
     event: TicketEvent.CREATE,
-    recipientType: [RecipientType.CREATED_BY, RecipientType.CATEGORY_IT_MANAGERS],
+    recipientType: [RecipientType.CREATED_BY, RecipientType.ASSIGNED_TO],
   },
   {
     event: TicketEvent.STATUS_CHANGE,

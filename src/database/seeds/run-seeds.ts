@@ -14,6 +14,9 @@ import { TicketStatus } from '../../entities/ticket-status.entity';
 import { TicketPriority } from '../../entities/ticket-priority.entity';
 import { Notification } from '../../entities/notification.entity';
 import { UserCategory } from '../../entities/user-category.entity';
+import { NotificationRule } from '../../entities/notification-rule.entity';
+import { Organization } from '../../entities/organization.entity';
+import { Department } from '../../entities/department.entity';
 
 async function runSeeds() {
   const dataSource = new DataSource({
@@ -36,6 +39,9 @@ async function runSeeds() {
       TicketPriority,
       Notification,
       UserCategory,
+      NotificationRule,
+      Organization,
+      Department,
     ],
     synchronize: false,
   });
