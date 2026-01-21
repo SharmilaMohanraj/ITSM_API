@@ -1,0 +1,1068 @@
+{
+	"info": {
+		"_postman_id": "itsm-api-collection",
+		"name": "ITSM-API",
+		"description": "Postman collection for ITSM-API - IT Service Management API with Role-Based Access Control",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Get Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Health check endpoint to verify API is running"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.environment.set('accessToken', jsonData.access_token);",
+									"        pm.collectionVariables.set('accessToken', jsonData.access_token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"superadmin@itsm.com\",\n    \"password\": \"SuperAdmin@123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login endpoint to authenticate and receive JWT token. Response now includes 'roles' array instead of single 'role' field."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Lookup",
+			"item": [
+				{
+					"name": "Get Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/lookup/roles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"lookup",
+								"roles"
+							]
+						},
+						"description": "Get all available roles (employee, manager, it_executive, super_admin). Use role IDs when creating users."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/lookup/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"lookup",
+								"categories"
+							]
+						},
+						"description": "Get all active ticket categories"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Statuses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/lookup/statuses",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"lookup",
+								"statuses"
+							]
+						},
+						"description": "Get all active ticket statuses"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Priorities",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/lookup/priorities",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"lookup",
+								"priorities"
+							]
+						},
+						"description": "Get all active ticket priorities"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Register User (Public - Employee Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"newuser@example.com\",\n    \"password\": \"password123\",\n    \"fullName\": \"John Doe\",\n    \"roleIds\": [\"employee-role-uuid-here\"],\n    \"department\": \"IT Support\",\n    \"teamId\": null,\n    \"skills\": {\n        \"programming\": [\"JavaScript\", \"TypeScript\"],\n        \"certifications\": [\"AWS Certified\"]\n    },\n    \"isAvailable\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"register"
+							]
+						},
+						"description": "Public endpoint to register a new user. Only allows creating employees. roleIds must contain only the employee role ID (get from /lookup/roles)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create User (Super Admin Only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"itmanager@example.com\",\n    \"password\": \"password123\",\n    \"fullName\": \"Jane Smith\",\n    \"roleIds\": [\"it-manager-role-uuid-here\"],\n    \"department\": \"IT Support\",\n    \"teamId\": null,\n    \"skills\": {\n        \"networking\": [\"CCNA\"],\n        \"support\": [\"ITIL\"]\n    },\n    \"isAvailable\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Create a new user (requires Super Admin role). Can create IT Managers and Super Admins. When creating IT Manager, employee role is automatically added. Get role IDs from /lookup/roles endpoint."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users (IT Manager Only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Get all users with their roles (requires IT Manager role)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "user-uuid-here",
+									"description": "User UUID (users can only access their own profile, IT Managers can access any profile)"
+								}
+							]
+						},
+						"description": "Get a specific user by ID with their roles. Users can access their own profile, IT Managers can access any user profile. Requires authentication."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin (Super Admin Only)",
+			"item": [
+				{
+					"name": "Add Role to User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"user-uuid-here\",\n    \"roleId\": \"role-uuid-here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/roles/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"roles",
+								"add"
+							]
+						},
+						"description": "Add a role to a user. If adding IT Manager role, employee role is automatically added. Requires Super Admin role."
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Role from User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"user-uuid-here\",\n    \"roleId\": \"role-uuid-here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/roles/remove",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"roles",
+								"remove"
+							]
+						},
+						"description": "Remove a role from a user. Cannot remove super_admin role. If removing IT Manager role, all category mappings are also removed. Requires Super Admin role."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Category to IT Manager",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"it-manager-uuid-here\",\n    \"categoryId\": \"category-uuid-here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/categories/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"categories",
+								"add"
+							]
+						},
+						"description": "Map a ticket category to an IT Manager. Only IT Managers can have category mappings. Requires Super Admin role."
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Category from IT Manager",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"it-manager-uuid-here\",\n    \"categoryId\": \"category-uuid-here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/categories/remove",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"categories",
+								"remove"
+							]
+						},
+						"description": "Remove a category mapping from an IT Manager. Requires Super Admin role."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users (Filtered)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users?roleId=role-uuid-here&categoryId=category-uuid-here&search=john",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "roleId",
+									"value": "role-uuid-here",
+									"description": "Filter by role ID (optional) - get from /lookup/roles",
+									"disabled": true
+								},
+								{
+									"key": "categoryId",
+									"value": "category-uuid-here",
+									"description": "Filter by category ID (optional) - get from /lookup/categories",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "john",
+									"description": "Search by email or full name (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all users with optional filters: roleId, categoryId, and search (email/name). Returns users with their roles and category mappings. Requires Super Admin role."
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Ticket to IT Manager",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticketId\": \"ticket-uuid-here\",\n    \"userId\": \"it-manager-uuid-here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/tickets/assign",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"tickets",
+								"assign"
+							]
+						},
+						"description": "Assign a ticket to an IT Manager. Validates that: 1) User is an IT Manager, 2) Ticket category matches one of the IT Manager's assigned categories. Requires Super Admin role."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tickets",
+			"item": [
+				{
+					"name": "Create Ticket",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Laptop not starting\",\n    \"description\": \"My laptop won't boot up. It shows a blue screen error.\",\n    \"categoryId\": \"category-uuid-here\",\n    \"priorityId\": \"priority-uuid-here\",\n    \"statusId\": \"status-uuid-here\",\n    \"assignedToId\": null,\n    \"conversationContext\": {\n        \"device\": \"Dell Latitude 5520\",\n        \"errorCode\": \"BSOD 0x0000007B\"\n    },\n    \"summary\": {\n        \"issue\": \"Blue screen error on boot\",\n        \"rootCause\": \"Hardware driver issue\",\n        \"resolution\": \"Update BIOS and drivers\"\n    },\n    \"slaResponseDue\": \"2024-12-31T10:00:00Z\",\n    \"slaResolutionDue\": \"2024-12-31T18:00:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets"
+							]
+						},
+						"description": "Create a new ticket (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Tickets",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets"
+							]
+						},
+						"description": "Get all tickets (filtered by user role - employees see their own, IT managers see all)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tickets for IT Manager",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/it-manager?statusId=status-uuid-here&categoryId=category-uuid-here&priorityId=priority-uuid-here",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"it-manager"
+							],
+							"query": [
+								{
+									"key": "statusId",
+									"value": "status-uuid-here",
+									"description": "Filter by status ID (optional) - get from /lookup/statuses",
+									"disabled": true
+								},
+								{
+									"key": "categoryId",
+									"value": "category-uuid-here",
+									"description": "Filter by category ID (optional) - get from /lookup/categories",
+									"disabled": true
+								},
+								{
+									"key": "priorityId",
+									"value": "priority-uuid-here",
+									"description": "Filter by priority ID (optional) - get from /lookup/priorities",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all tickets assigned to IT Manager and unassigned tickets. Supports optional filters: statusId, categoryId, priorityId. Requires IT Manager role."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Last Raised Ticket for Employee",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/employee?statusId=status-uuid-here&categoryId=category-uuid-here&priorityId=priority-uuid-here",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"employee"
+							],
+							"query": [
+								{
+									"key": "statusId",
+									"value": "status-uuid-here",
+									"description": "Filter by status ID (optional) - get from /lookup/statuses",
+									"disabled": true
+								},
+								{
+									"key": "categoryId",
+									"value": "category-uuid-here",
+									"description": "Filter by category ID (optional) - get from /lookup/categories",
+									"disabled": true
+								},
+								{
+									"key": "priorityId",
+									"value": "priority-uuid-here",
+									"description": "Filter by priority ID (optional) - get from /lookup/priorities",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get the employee's last raised ticket. Supports optional filters: statusId, categoryId, priorityId. Requires Employee role."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ticket by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ticket-uuid-here",
+									"description": "Ticket UUID"
+								}
+							]
+						},
+						"description": "Get a specific ticket by ID (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Ticket",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated ticket title\",\n    \"description\": \"Updated description\",\n    \"categoryId\": \"category-uuid-here\",\n    \"priorityId\": \"priority-uuid-here\",\n    \"statusId\": \"status-uuid-here\",\n    \"assignedToId\": \"user-uuid-here\",\n    \"conversationContext\": {\n        \"updated\": true\n    },\n    \"slaResponseDue\": \"2024-12-31T12:00:00Z\",\n    \"slaResolutionDue\": \"2024-12-31T20:00:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tickets/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ticket-uuid-here",
+									"description": "Ticket UUID"
+								}
+							]
+						},
+						"description": "Update a ticket (requires IT Manager or Employee role)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Ticket Status (IT Manager Only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"statusId\": \"status-uuid-here\",\n    \"comment\": \"Issue has been resolved. The laptop was restarted and the problem is fixed.\",\n    \"isInternal\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tickets/:id/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								":id",
+								"status"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ticket-uuid-here",
+									"description": "Ticket UUID"
+								}
+							]
+						},
+						"description": "Update ticket status with a comment (requires IT Manager role)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Ticket (IT Manager Only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ticket-uuid-here",
+									"description": "Ticket UUID"
+								}
+							]
+						},
+						"description": "Delete a ticket (requires IT Manager role)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notifications",
+			"item": [
+				{
+					"name": "Get All Unread Notifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/unread",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"unread"
+							]
+						},
+						"description": "Get all unread notifications for the authenticated user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Notifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications"
+							]
+						},
+						"description": "Get all notifications (read and unread) for the authenticated user"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/:id/read",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								":id",
+								"read"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "notification-uuid-here",
+									"description": "Notification UUID"
+								}
+							]
+						},
+						"description": "Mark a notification as read"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

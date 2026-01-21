@@ -4,11 +4,23 @@ import { TicketPriority } from '../../entities/ticket-priority.entity';
 import { TicketStatus } from '../../entities/ticket-status.entity';
 import { NotificationRule, TicketEvent } from '../../entities/notification-rule.entity';
 import { RecipientType } from '../../entities/notification-rule.entity';
+import { Organization } from '../../entities/organization.entity';
+import { Department } from '../../entities/department.entity';
 
+interface OrganizationSeedData {
+  name: string;
+  description: string;
+}
+
+interface DepartmentSeedData {
+  name: string;
+  description: string;
+}
 interface CategorySeedData {
   name: string;
   description: string;
   code: string;
+  departmentName: string;
 }
 
 interface PrioritySeedData {
@@ -27,41 +39,120 @@ interface NotificationRuleSeedData {
   recipientType: RecipientType[];
 }
 
+const ORGANIZATION_SEED = {
+  name: 'Generic Organization',
+  description: 'Default organization for ticketing system',
+};
+
+const DEPARTMENT_SEEDS = [
+  { name: 'IT', description: 'IT Support Department' },
+  { name: 'HR', description: 'Human Resources' },
+  { name: 'Finance', description: 'Finance & Accounts' },
+  { name: 'Admin', description: 'Administration' },
+];
+
 const TICKET_CATEGORIES: CategorySeedData[] = [
   {
     name: 'Hardware',
     description: 'Laptop, monitor, keyboard issues with typical resolution times',
     code: 'HW',
+    departmentName: 'IT',
   },
   {
     name: 'Software',
     description: 'Application crashes, installations, licensing',
     code: 'SW',
+    departmentName: 'IT',
   },
   {
     name: 'Network',
     description: 'VPN, WiFi, connectivity problems',
     code: 'NW',
+    departmentName: 'IT',
   },
   {
     name: 'Access and Permissions',
     description: 'Password resets, account access',
     code: 'AP',
+    departmentName: 'IT',
   },
   {
     name: 'Infrastructure',
     description: 'Servers, databases, cloud issues',
     code: 'IS',
+    departmentName: 'IT',
   },
   { 
     name: 'Security',
     description: 'Malware, breaches, phishing',
     code: 'ST',
+    departmentName: 'IT',
   },
   {
     name: 'Request',
     description: 'New equipment, software purchases, service requests',
     code: 'SR',
+    departmentName: 'IT',
+  },
+  {
+    name: 'Leave & Attendance',
+    code: 'LA',
+    description: 'Leave balance, attendance, WFH, overtime issues',
+    departmentName: 'HR',
+  },
+  {
+    name: 'Employee Details',
+    code: 'ED',
+    description: 'Employee personal and contact information updates',
+    departmentName: 'HR',
+  },
+  {
+    name: 'Payroll & Salary',
+    code: 'PS',
+    description: 'Salary, payslip, tax, deductions, Form-16',
+    departmentName: 'HR',
+  },
+  {
+    name: 'Benefits & Policies',
+    code: 'BP',
+    description: 'Insurance, reimbursements, company policies',
+    departmentName: 'HR',
+  },
+  {
+    name: 'Employee Documents',
+    code: 'DO',
+    description: 'Offer letter, experience letter, verification, NOC',
+    departmentName: 'HR',
+  },
+  {
+    name: 'Office Access',
+    code: 'OA',
+    description: 'Access card, biometric, parking, visitor management',
+    departmentName: 'Admin',
+  },
+  {
+    name: 'Seating & Workspace',
+    code: 'SWC',
+    description: 'Desk, chair, seating changes, workspace setup',
+    departmentName: 'Admin',
+  },
+  {
+    name: 'Office Supplies',
+    code: 'OS',
+    description: 'Stationery, printer supplies, pantry items',
+    departmentName: 'Admin',
+  },
+  {
+    name: 'Facility Issues',
+    code: 'FI',
+    description: 'AC, power, water, lighting, housekeeping',
+    departmentName: 'Admin',
+  },
+  {
+    name: 'Transportation',
+    code: 'TR',
+    description: 'Office cab, travel booking, pickup/drop issues',
+    departmentName: 'Admin',
   },
 ];
 
@@ -142,24 +233,35 @@ const NOTIFICATION_RULES: NotificationRuleSeedData[] = [
   },
 ];
 
-export async function seedTicketCategories(
+async function seedTicketCategories(
   dataSource: DataSource,
+  departmentMap: Map<string, Department>,
 ): Promise<void> {
-  const categoryRepository = dataSource.getRepository(TicketCategory);
+  const categoryRepo = dataSource.getRepository(TicketCategory);
 
   for (const categoryData of TICKET_CATEGORIES) {
-    const existingCategory = await categoryRepository.findOne({
-      where: { name: categoryData.name },
+    const department = departmentMap.get(categoryData.departmentName);
+    if (!department) {
+      console.warn(`⚠ Department not found for category: ${categoryData.name}`);
+      continue;
+    }
+
+    const existingCategory = await categoryRepo.findOne({
+      where: { code: categoryData.code },
     });
 
     if (!existingCategory) {
-      const category = categoryRepository.create(categoryData);
-      await categoryRepository.save(category);
-      console.log(`✓ Seeded ticket category: ${categoryData.name}`);
+      const category = categoryRepo.create({
+        name: categoryData.name,
+        description: categoryData.description,
+        code: categoryData.code,
+        departmentId: department.id,
+      });
+
+      await categoryRepo.save(category);
+      console.log(`✔ Category created: ${category.name}`);
     } else {
-      console.log(
-        `⊘ Ticket category already exists: ${categoryData.name}`,
-      );
+      console.log(`⊘ Category already exists: ${categoryData.name}`);
     }
   }
 }
@@ -222,10 +324,63 @@ export async function seedNotificationRules(
   }
 }
 
+async function seedOrganization(dataSource: DataSource): Promise<Organization> {
+  const orgRepo = dataSource.getRepository(Organization);
+
+  let organization = await orgRepo.findOne({
+    where: { name: ORGANIZATION_SEED.name },
+  });
+
+  if (!organization) {
+    organization = orgRepo.create(ORGANIZATION_SEED);
+    organization = await orgRepo.save(organization);
+    console.log(`✔ Organization created: ${organization.name}`);
+  } else {
+    console.log(`⊘ Organization already exists: ${organization.name}`);
+  }
+
+  return organization;
+}
+
+async function seedDepartments(
+  dataSource: DataSource,
+  organization: Organization,
+): Promise<Map<string, Department>> {
+  const deptRepo = dataSource.getRepository(Department);
+  const departmentMap = new Map<string, Department>();
+
+  for (const deptData of DEPARTMENT_SEEDS) {
+    let department = await deptRepo.findOne({
+      where: {
+        name: deptData.name,
+        organizationId: organization.id,
+      },
+    });
+
+    if (!department) {
+      department = deptRepo.create({
+        ...deptData,
+        organizationId: organization.id,
+      });
+      department = await deptRepo.save(department);
+      console.log(`✔ Department created: ${department.name}`);
+    } else {
+      console.log(`⊘ Department already exists: ${department.name}`);
+    }
+
+    departmentMap.set(deptData.name, department);
+  }
+
+  return departmentMap;
+}
+
+
 export async function seedTicketLookups(
   dataSource: DataSource,
 ): Promise<void> {
-  await seedTicketCategories(dataSource);
+  const organization = await seedOrganization(dataSource);
+  const departmentMap = await seedDepartments(dataSource, organization);
+  await seedTicketCategories(dataSource, departmentMap);
   await seedTicketPriorities(dataSource);
   await seedTicketStatuses(dataSource);
   await seedNotificationRules(dataSource);

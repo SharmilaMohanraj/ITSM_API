@@ -8,9 +8,11 @@ import {
     UpdateDateColumn,
     Index,
     ManyToMany,
+    OneToMany,
   } from 'typeorm';
   import { Organization } from './organization.entity';
 import { User } from './user.entity';
+import { TicketCategory } from './ticket-category.entity';
   
   @Entity('departments')
   @Index(['organizationId', 'name'], { unique: true })
@@ -36,6 +38,9 @@ import { User } from './user.entity';
   
     @Column({ default: true })
     isActive: boolean;
+
+    @OneToMany(() => TicketCategory, (category) => category.department)
+    categories: TicketCategory[];
   
     @ManyToMany(() => User, (user) => user.departments)
     users: User[];

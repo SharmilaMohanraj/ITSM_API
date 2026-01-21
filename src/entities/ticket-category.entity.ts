@@ -4,7 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
+  ManyToOne,
+  Index,
 } from 'typeorm';
+import { Department } from './department.entity';
 
 @Entity('ticket_categories')
 export class TicketCategory {
@@ -22,6 +26,14 @@ export class TicketCategory {
 
   @Column({ nullable: true, unique: true })
   code: string;
+
+  @Column({ name: 'department_id' })
+  @Index()
+  departmentId: string;
+
+  @ManyToOne(() => Department, (department) => department.categories)
+  @JoinColumn({ name: 'department_id' })
+  department: Department;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
