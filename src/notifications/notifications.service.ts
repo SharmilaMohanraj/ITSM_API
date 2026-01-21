@@ -29,13 +29,14 @@ export class NotificationsService {
       const createdBy = ticket.createdBy;
       if (ticket) {
         if (notificationRule.recipientType.includes(RecipientType.CREATED_BY) && createdBy) {
-          await this.notificationRepository.create({
+          const notification = await this.notificationRepository.create({
             userId: createdBy.id,
             user: createdBy,
             message,
             status: NotificationStatus.UNREAD,
             ticketId: ticketId || null,
           });
+          await this.notificationRepository.save(notification);
           if (event === TicketEvent.CREATE) {
             await this.emailService.sendTicketCreatedEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created');
           } else if (event === TicketEvent.STATUS_CHANGE) {
@@ -48,18 +49,46 @@ export class NotificationsService {
             await this.emailService.sendTicketAssignedEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned');
           }
         }
-        if (notificationRule.recipientType.includes(RecipientType.ASSIGNED_TO) && ticket.assignedToManagerId) {
-          const user = await this.userRepository.findOne({ where: { id: ticket.assignedToManagerId } });
+        if (notificationRule.recipientType.includes(RecipientType.ASSIGNED_TO)) {
+          if (ticket.assignedToManagerId) {
+            const user = await this.userRepository.findOne({ where: { id: ticket.assignedToManagerId } });
+            if (user) {
+              const notification = await this.notificationRepository.create({
+                userId: createdBy.id,
+                user: createdBy,
+                managerId: ticket.assignedToManagerId,
+                manager: user,
+                message,
+                status: NotificationStatus.UNREAD,
+                ticketId: ticketId || null,
+              });
+              await this.notificationRepository.save(notification);
+              if (event === TicketEvent.CREATE) {
+                await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created-manager');
+              } else if (event === TicketEvent.STATUS_CHANGE) {
+                if (newStatus === 'Resolved') {
+                  await this.emailService.sendTicketResolvedEmail(user.email, user.fullName, ticket.ticketNumber, 'ticket-resolved-manager');
+                } else {
+                  await this.emailService.sendTicketStatusChangeEmail(user.email, user.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change-manager');
+                }
+              } else if (event === TicketEvent.ASSIGN) {
+                await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned-manager');
+              }
+            }
+         }
+         if (ticket.assignedToExecutiveId) {
+          const user = await this.userRepository.findOne({ where: { id: ticket.assignedToExecutiveId } });
           if (user) {
-            await this.notificationRepository.create({
+            const notification = await this.notificationRepository.create({
               userId: createdBy.id,
               user: createdBy,
-              managerId: ticket.assignedToManagerId,
-              manager: user,
+              executiveId: ticket.assignedToExecutiveId,
+              executive: user,
               message,
               status: NotificationStatus.UNREAD,
               ticketId: ticketId || null,
             });
+            await this.notificationRepository.save(notification);
             if (event === TicketEvent.CREATE) {
               await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created-manager');
             } else if (event === TicketEvent.STATUS_CHANGE) {
@@ -72,24 +101,25 @@ export class NotificationsService {
               await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned-manager');
             }
           }
-        }
+       }
+      }
       
-      if (notificationRule.recipientType.includes(RecipientType.CATEGORY_IT_MANAGERS) && ticket.categoryId) {
-        const categoryITManagers: User[] = await this.userRepository
+      if (notificationRule.recipientType.includes(RecipientType.DEPARTMENT_IT_MANAGERS) && ticket.departmentId) {
+        const departmentITManagers: User[] = await this.userRepository
         .createQueryBuilder('user')
         .innerJoin('user.roles', 'role', 'role.key = :roleKey', {
           roleKey: 'manager',
         })
-        .innerJoin('user.userCategories', 'userCategory')
-        .where('userCategory.categoryId = :categoryId', { categoryId: ticket.categoryId })
+        .innerJoin('user.departments', 'department')
+        .where('department.id = :departmentId', { departmentId: ticket.departmentId })
         .select([
           'user.id',
           'user.email',
           'user.fullName',
         ])
         .getMany();
-        for (const user of categoryITManagers) {
-          await this.notificationRepository.create({
+        for (const user of departmentITManagers) {
+          const notification = await this.notificationRepository.create({
             userId: createdBy.id,
             user: createdBy,
             managerId: user.id,
@@ -98,6 +128,7 @@ export class NotificationsService {
             status: NotificationStatus.UNREAD,
             ticketId: ticketId || null,
           });
+          await this.notificationRepository.save(notification);
           if (event === TicketEvent.CREATE) {
             await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created-manager');
           } else if (event === TicketEvent.STATUS_CHANGE) {

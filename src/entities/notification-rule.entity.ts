@@ -10,7 +10,7 @@ export enum TicketEvent {
   export enum RecipientType {
     CREATED_BY = 'CREATED_BY',
     ASSIGNED_TO = 'ASSIGNED_TO',
-    CATEGORY_IT_MANAGERS = 'CATEGORY_IT_MANAGERS',
+    DEPARTMENT_IT_MANAGERS = 'DEPARTMENT_IT_MANAGERS',
   }
   
   @Entity('notification_rules')

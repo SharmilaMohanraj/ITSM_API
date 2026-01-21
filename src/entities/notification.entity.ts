@@ -34,6 +34,13 @@ export class Notification {
   @JoinColumn({ name: 'manager_id' })
   manager: User;
 
+  @Column({ name: 'executive_id', nullable: true })
+  executiveId: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'executive_id' })
+  executive: User;
+
   @Column('text')
   message: string;
 
