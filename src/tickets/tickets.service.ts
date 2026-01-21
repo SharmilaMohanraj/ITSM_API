@@ -909,35 +909,58 @@ const managerWithLessActiveTickets =
       }
     }
 
+    const oldAssignedToManager = ticket.assignedToManager;
+
+    // Update ticket assigned to manager
     ticket.assignedToManager = user;
     ticket.assignedToManagerId = user.id;
 
+    const oldStatus = ticket.status;
     const status = await this.statusRepository.findOne({ where: { name: 'Assigned' } });
+    if (status) {
+      ticket.status = status;
+      ticket.statusId = status.id;
+    }
     
+    const savedTicket = await this.ticketRepository.save(ticket);
     const notificationRule = await this.notificationRuleRepository.findOne({
       where: {
         event: TicketEvent.ASSIGN,
       },
     });
     if (notificationRule) {
-    await this.rabbitMQService.publishTicketStatusChange({
-      ticketId: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      oldStatus: ticket.status.name,
-      newStatus: status.name,
-      comment: 'Ticket assigned to IT Manager',
-      event: TicketEvent.ASSIGN,
-      });
+      try {
+        await this.rabbitMQService.publishTicketStatusChange({
+          ticketId: savedTicket.id,
+          ticketNumber: savedTicket.ticketNumber,
+          oldStatus: oldStatus.name,
+          newStatus: status.name,
+          comment: 'Ticket assigned to IT Manager',
+          event: TicketEvent.ASSIGN,
+        });
+      } catch (error) {
+        console.error('Failed to publish status change event:', error);
+      }
     }
 
-    if (status) {
-      ticket.status = status;
-      ticket.statusId = status.id;
-    }
-    return this.ticketRepository.save(ticket);
+    const changedBy = await this.userRepository.findOne({ where: { id: userId } });
+
+    // Create ticket history entry for ticket creation
+    const assignedHistory = this.ticketHistoryRepository.create({
+      ticketId: savedTicket.id,
+      ticket: savedTicket,
+      changedById: userId,
+      changedBy,
+      changeType: ChangeType.ASSIGNED,
+      fieldName: 'assignedToManager',
+      oldValue: oldAssignedToManager?.fullName,
+      newValue: savedTicket.assignedToManager?.fullName,
+    });
+    await this.ticketHistoryRepository.save(assignedHistory);
+    return savedTicket;
   }
 
-  async assignTicketToITExecutive(assignTicketDto: AssignTicketDto): Promise<Ticket> {
+  async assignTicketToITExecutive(assignTicketDto: AssignTicketDto, userId: string): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id: assignTicketDto.ticketId },
       relations: ['category', 'assignedToExecutive', 'status'],
@@ -972,32 +995,55 @@ const managerWithLessActiveTickets =
       }
     }
 
+    const oldAssignedToExecutive = ticket.assignedToExecutive;
+
+    // Update ticket assigned to executive
     ticket.assignedToExecutive = user;
     ticket.assignedToExecutiveId = user.id;
 
+    const oldStatus = ticket.status;
     const status = await this.statusRepository.findOne({ where: { name: 'Assigned' } });
+    if (status) {
+      ticket.status = status;
+      ticket.statusId = status.id;
+    }
     
+    const savedTicket = await this.ticketRepository.save(ticket);
     const notificationRule = await this.notificationRuleRepository.findOne({
       where: {
         event: TicketEvent.ASSIGN,
       },
     });
     if (notificationRule) {
-    await this.rabbitMQService.publishTicketStatusChange({
-      ticketId: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      oldStatus: ticket.status.name,
-      newStatus: status.name,
-      comment: 'Ticket assigned to IT Executive',
-      event: TicketEvent.ASSIGN,
-      });
+      try {
+        await this.rabbitMQService.publishTicketStatusChange({
+          ticketId: savedTicket.id,
+          ticketNumber: savedTicket.ticketNumber,
+          oldStatus: oldStatus.name,
+          newStatus: status.name,
+          comment: 'Ticket assigned to IT Executive',
+          event: TicketEvent.ASSIGN,
+        });
+      } catch (error) {
+        console.error('Failed to publish status change event:', error);
+      }
     }
 
-    if (status) {
-      ticket.status = status;
-      ticket.statusId = status.id;
-    }
-    return this.ticketRepository.save(ticket);
+    const changedBy = await this.userRepository.findOne({ where: { id: userId } });
+
+    // Create ticket history entry for ticket creation
+    const assignedHistory = this.ticketHistoryRepository.create({
+      ticketId: savedTicket.id,
+      ticket: savedTicket,
+      changedById: userId,
+      changedBy,
+      changeType: ChangeType.ASSIGNED,
+      fieldName: 'assignedToExecutive',
+      oldValue: oldAssignedToExecutive?.fullName,
+      newValue: savedTicket.assignedToExecutive?.fullName,
+    });
+    await this.ticketHistoryRepository.save(assignedHistory);
+    return savedTicket;
   }
 }
 

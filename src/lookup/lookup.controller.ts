@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { LookupService } from './lookup.service';
+import { ChangeType } from 'src/entities/ticket-history.entity';
 
 @Controller('lookup')
 export class LookupController {
@@ -23,5 +24,17 @@ export class LookupController {
   @Get('roles')
   getRoles() {
     return this.lookupService.findAllRoles();
+  }
+
+  @Get('departments')
+  getDepartments() {
+    return this.lookupService.findAllDepartments();
+  }
+
+  @Get('change-types')
+  getChangeTypes() {
+    return {
+      data: Object.values(ChangeType),
+    };  
   }
 }

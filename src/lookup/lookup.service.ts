@@ -5,6 +5,7 @@ import { TicketCategory } from '../entities/ticket-category.entity';
 import { TicketStatus } from '../entities/ticket-status.entity';
 import { TicketPriority } from '../entities/ticket-priority.entity';
 import { Role } from '../entities/role.entity';
+import { Department } from 'src/entities/department.entity';
 
 @Injectable()
 export class LookupService {
@@ -17,6 +18,8 @@ export class LookupService {
     private priorityRepository: Repository<TicketPriority>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    @InjectRepository(Department)
+    private departmentRepository: Repository<Department>,
   ) {}
 
   async findAllCategories(): Promise<TicketCategory[]> {
@@ -42,6 +45,12 @@ export class LookupService {
 
   async findAllRoles(): Promise<Role[]> {
     return this.roleRepository.find({
+      order: { name: 'ASC' },
+    });
+  }
+
+  async findAllDepartments(): Promise<Department[]> {
+    return this.departmentRepository.find({
       order: { name: 'ASC' },
     });
   }

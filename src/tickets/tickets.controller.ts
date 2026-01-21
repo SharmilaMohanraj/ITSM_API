@@ -160,7 +160,7 @@ export class TicketsController {
   @UseGuards(RolesGuard)
   @Roles('manager','super_admin')
   assignToExecutive(@Body() assignTicketDto: AssignTicketDto, @Request() req) {
-    return this.ticketsService.assignTicketToITExecutive(assignTicketDto);
+    return this.ticketsService.assignTicketToITExecutive(assignTicketDto, req.user.userId);
   }
 }
 
