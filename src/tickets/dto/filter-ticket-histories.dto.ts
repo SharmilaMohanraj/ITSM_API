@@ -29,7 +29,7 @@ export class FilterTicketHistoriesDto {
     limit: number = 20;
 
     @IsOptional()
-    sortBy: string = 'createdAt';
+    sortBy: string;;
     
     @IsOptional()   
     @IsIn(['ASC', 'DESC'])

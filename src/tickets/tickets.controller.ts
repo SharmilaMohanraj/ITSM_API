@@ -73,6 +73,33 @@ export class TicketsController {
     );
   }
 
+  @Get('ticket-histories')
+  @UseGuards(RolesGuard)
+  @Roles('super_admin', 'manager', 'it_executive')
+  async getTicketHistories(
+    @Request() req,
+    @Query() query: FilterTicketHistoriesDto  
+  ) {
+    return this.ticketsService.getTicketHistories(
+      {
+        ticketId: query.ticketId,
+        ticketNumber: query.ticketNumber,
+        assignedTo: query.assignedTo,
+        changeType: query.changeType,
+        fromDate: query.fromDate,
+        toDate: query.toDate,
+      },
+      {
+        page: query.page || 1,
+        limit: query.limit || 20,
+        sortBy: query.sortBy,
+        order: query.order,
+      },  
+      req.user.userId,
+      req.user.roles,
+    );
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
     return this.ticketsService.findOne(id, req.user.userId, req.user.roles);
@@ -119,34 +146,6 @@ export class TicketsController {
   @Roles('manager', 'it_executive', 'super_admin')
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
     return this.ticketsService.remove(id, req.user.userId, req.user.roles);
-  }
-
-
-  @Get('ticket-histories')
-  @UseGuards(RolesGuard)
-  @Roles('super_admin', 'manager', 'it_executive')
-  async getTicketHistories(
-    @Request() req,
-    @Query() query: FilterTicketHistoriesDto  
-  ) {
-    return this.ticketsService.getTicketHistories(
-      {
-        ticketId: query.ticketId,
-        ticketNumber: query.ticketNumber,
-        assignedTo: query.assignedTo,
-        changeType: query.changeType,
-        fromDate: query.fromDate,
-        toDate: query.toDate,
-      },
-      {
-        page: query.page || 1,
-        limit: query.limit || 20,
-        sortBy: query.sortBy,
-        order: query.order,
-      },  
-      req.user.userId,
-      req.user.roles,
-    );
   }
 
   @Post('assign-to-manager')

@@ -196,7 +196,7 @@ export class AdminService {
   async assignTicketToITManager(assignTicketDto: AssignTicketDto): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id: assignTicketDto.ticketId },
-      relations: ['category', 'assignedTo', 'status'],
+      relations: ['category', 'assignedToManager', 'assignedToExecutive', 'status'],
     });
 
     if (!ticket) {
