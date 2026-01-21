@@ -12,11 +12,11 @@ export class Role {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Machine-readable identifier (e.g. "employee", "it_manager")
+  // Machine-readable identifier (e.g. "employee", "manager", "it_executive")
   @Column({ unique: true })
   key: string;
 
-  // Human-readable label (e.g. "Employee", "IT Manager")
+  // Human-readable label (e.g. "Employee", "Manager", "IT Executive")
   @Column()
   name: string;
 

@@ -65,7 +65,7 @@ export class AdminService {
     }
 
     // If adding IT Manager role, automatically add employee role
-    if (role.key === 'it_manager') {
+    if (role.key === 'manager' || role.key === 'it_executive') {
       const employeeRole = await this.roleRepository.findOne({
         where: { key: 'employee' },
       });
@@ -101,11 +101,6 @@ export class AdminService {
       throw new ForbiddenException('Cannot remove super_admin role');
     }
 
-    // If removing IT Manager role, also remove all category mappings
-    if (role.key === 'it_manager') {
-      await this.userCategoryRepository.delete({ user: { id: user.id } });
-    }
-
     user.roles = user.roles?.filter((r) => r.id !== role.id) || [];
     return this.userRepository.save(user);
   }
@@ -121,9 +116,9 @@ export class AdminService {
     }
 
     // Verify user is an IT Manager
-    const isITManager = user.roles?.some((role) => role.key === 'it_manager');
-    if (!isITManager) {
-      throw new BadRequestException('Category mapping is only allowed for IT Managers');
+    const isITExecutive = user.roles?.some((role) => role.key === 'it_executive');
+    if (!isITExecutive) {
+      throw new BadRequestException('Category mapping is only allowed for IT Executives');
     }
 
     const category = await this.categoryRepository.findOne({
@@ -218,26 +213,23 @@ export class AdminService {
     }
 
     // Verify user is an IT Manager
-    const isITManager = user.roles?.some((role) => role.key === 'it_manager');
+    const isITManager = user.roles?.some((role) => role.key === 'manager');
     if (!isITManager) {
       throw new BadRequestException('Can only assign tickets to IT Managers');
     }
 
     // Verify ticket category matches IT Manager's categories
-    if (ticket.categoryId) {
-      const hasCategory = user.userCategories?.some(
-        (uc) => uc.category.id === ticket.categoryId,
+    if (ticket.departmentId) {
+      const hasDepartment = user.departments?.some(
+        (d) => d.id === ticket.departmentId,
       );
-
-      if (!hasCategory) {
-        throw new BadRequestException(
-          'Ticket category does not match any of the IT Manager\'s assigned categories',
-        );
+      if (!hasDepartment) {
+        throw new BadRequestException('Ticket department does not match any of the IT Manager\'s assigned departments');
       }
     }
 
-    ticket.assignedTo = user;
-    ticket.assignedToId = user.id;
+    ticket.assignedToManager = user;
+    ticket.assignedToManagerId = user.id;
 
     const status = await this.statusRepository.findOne({ where: { name: 'Assigned' } });
     

@@ -16,11 +16,13 @@ import { Attachment } from './attachment.entity';
 import { TicketHistory } from './ticket-history.entity';
 import { Role } from './role.entity';
 import { UserCategory } from './user-category.entity';
+import { Department } from './department.entity';
 
 // Keep enum for backward compatibility - now maps to role keys
 export enum UserRole {
   EMPLOYEE = 'employee',
-  IT_MANAGER = 'it_manager',
+  IT_MANAGER = 'manager',
+  IT_EXECUTIVE = 'it_executive',
   SUPER_ADMIN = 'super_admin',
 }
 
@@ -46,8 +48,13 @@ export class User {
   })
   roles: Role[];
 
-  @Column({ nullable: true })
-  department: string;
+  @ManyToMany (() => Department, (department) => department.users)
+  @JoinTable({
+    name: 'user_departments',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'department_id', referencedColumnName: 'id' },
+  })
+  departments: Department[];
 
   @Column({ name: 'team_id', nullable: true })
   teamId: string;
@@ -65,8 +72,11 @@ export class User {
   @OneToMany(() => Ticket, (ticket) => ticket.createdBy)
   createdTickets: Ticket[];
 
-  @OneToMany(() => Ticket, (ticket) => ticket.assignedTo)
-  assignedTickets: Ticket[];
+  @OneToMany(() => Ticket, (ticket) => ticket.assignedToManager)
+  assignedToManagerTickets: Ticket[];
+
+  @OneToMany(() => Ticket, (ticket) => ticket.assignedToExecutive)
+  assignedToExecutiveTickets: Ticket[];
 
   @OneToMany(() => Comment, (comment) => comment.user)
   comments: Comment[];

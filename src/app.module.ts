@@ -22,6 +22,8 @@ import { LookupModule } from './lookup/lookup.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { NotificationRule } from './entities/notification-rule.entity';
+import { Department } from './entities/department.entity';
+import { Organization } from './entities/organization.entity';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { NotificationRule } from './entities/notification-rule.entity';
         NotificationRule,
         Role,
         UserCategory,
+        Organization,
+        Department, 
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',

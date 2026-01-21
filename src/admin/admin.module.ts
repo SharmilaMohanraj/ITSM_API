@@ -11,6 +11,7 @@ import { TicketStatus } from 'src/entities/ticket-status.entity';
 import { NotificationRule } from 'src/entities/notification-rule.entity';
 import { Notification } from 'src/entities/notification.entity';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { Department } from 'src/entities/department.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -22,6 +23,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
       TicketStatus,
       NotificationRule,
       Notification,
+      Department,
     ]),
     NotificationsModule,
   ],

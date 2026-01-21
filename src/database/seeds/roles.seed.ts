@@ -11,9 +11,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       description: 'Regular employee role',
     },
     {
-      key: 'it_manager',
+      key: 'manager',
       name: 'IT Manager',
       description: 'IT Manager role with ticket management capabilities',
+    },
+    {
+      key: 'it_executive',
+      name: 'IT Executive',
+      description: 'IT Executive role with ticket management capabilities',
     },
     {
       key: 'super_admin',

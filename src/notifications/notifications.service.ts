@@ -48,13 +48,13 @@ export class NotificationsService {
             await this.emailService.sendTicketAssignedEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned');
           }
         }
-        if (notificationRule.recipientType.includes(RecipientType.ASSIGNED_TO) && ticket.assignedToId) {
-          const user = await this.userRepository.findOne({ where: { id: ticket.assignedToId } });
+        if (notificationRule.recipientType.includes(RecipientType.ASSIGNED_TO) && ticket.assignedToManagerId) {
+          const user = await this.userRepository.findOne({ where: { id: ticket.assignedToManagerId } });
           if (user) {
             await this.notificationRepository.create({
               userId: createdBy.id,
               user: createdBy,
-              managerId: user.id,
+              managerId: ticket.assignedToManagerId,
               manager: user,
               message,
               status: NotificationStatus.UNREAD,
@@ -78,7 +78,7 @@ export class NotificationsService {
         const categoryITManagers: User[] = await this.userRepository
         .createQueryBuilder('user')
         .innerJoin('user.roles', 'role', 'role.key = :roleKey', {
-          roleKey: 'it_manager',
+          roleKey: 'manager',
         })
         .innerJoin('user.userCategories', 'userCategory')
         .where('userCategory.categoryId = :categoryId', { categoryId: ticket.categoryId })

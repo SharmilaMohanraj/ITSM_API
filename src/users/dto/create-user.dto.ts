@@ -27,8 +27,10 @@ export class CreateUserDto {
   roleIds: string[];
 
   @IsOptional()
-  @IsString()
-  department?: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID('4', { each: true })
+  departmentIds: string[];
 
   @IsOptional()
   @IsUUID()

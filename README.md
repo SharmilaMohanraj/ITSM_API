@@ -135,7 +135,8 @@ New, Assigned, In Progress, Waiting, On Hold, Resolved, Closed, Cancelled, Escal
 ## User Roles
 
 - **employee** - Can create tickets and view assigned tickets
-- **it_manager** - Full access to all tickets and user management
+- **manager** - Full access to all tickets and user management
+- **it_executive** - Full access to all tickets and user management
 
 ## Authentication
 

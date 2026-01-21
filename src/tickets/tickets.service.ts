@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere, In } from 'typeorm';
 import { Ticket } from '../entities/ticket.entity';
 import { User } from '../entities/user.entity';
 import { Comment } from '../entities/comment.entity';
@@ -18,6 +19,8 @@ import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
 import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { RabbitMQService } from '../notifications/rabbitmq.service';
 import { NotificationRule, TicketEvent } from 'src/entities/notification-rule.entity';
+import { Department } from 'src/entities/department.entity';
+import { AssignTicketDto } from 'src/admin/dto/assign-ticket.dto';
 
 @Injectable()
 export class TicketsService {
@@ -36,6 +39,8 @@ export class TicketsService {
     private statusRepository: Repository<TicketStatus>,
     @InjectRepository(TicketPriority)
     private priorityRepository: Repository<TicketPriority>,
+    @InjectRepository(Department)
+    private departmentRepository: Repository<Department>,
     @InjectRepository(NotificationRule)
     private notificationRuleRepository: Repository<NotificationRule>,
     private rabbitMQService: RabbitMQService,
@@ -54,6 +59,13 @@ export class TicketsService {
     });
     if (!createdBy) {
       throw new NotFoundException('User not found');
+    }
+
+    const department = await this.departmentRepository.findOne({
+      where: { id: createTicketDto.departmentId },
+    });
+    if (!department) {
+      throw new NotFoundException('Department not found');
     }
 
     // Validate category, priority, and status
@@ -100,6 +112,34 @@ export class TicketsService {
       }
     }
 
+    const ACTIVE_STATUSES = ['New', 'Assigned', 'In Progress'];
+
+const managerWithLessActiveTickets =
+  await this.userRepository
+    .createQueryBuilder('user')
+    .innerJoin('user.departments', 'department')
+    .innerJoin('user.roles', 'role')
+    .leftJoin(
+      'user.assignedToManagerTickets',
+      'ticket',
+      'ticket.status IN (:...statuses)',
+      { statuses: ACTIVE_STATUSES }
+    )
+    .where('department.id = :departmentId', { departmentId: department.id })
+    .andWhere('user.isAvailable = true')
+    .andWhere('role.key = :roleKey', { roleKey: 'manager' })
+    .select([
+      'user.id AS "userId"',
+      'user.name AS "userName"',
+      'COUNT(ticket.id) AS "activeTicketCount"',
+    ])
+    .groupBy('user.id')
+    .addGroupBy('user.name')
+    .orderBy('"activeTicketCount"', 'ASC')
+    .limit(1)
+    .getRawOne(); // get the user with the least active tickets
+
+
     const ticketNumber = this.generateTicketNumber(category);
     const ticket = this.ticketRepository.create({
       title: createTicketDto.title,
@@ -107,7 +147,7 @@ export class TicketsService {
       ticketNumber,
       createdById: userId,
       createdBy,
-      assignedToId: createTicketDto.assignedToId || null,
+      assignedToManagerId: managerWithLessActiveTickets?.userId || null,
       categoryId: createTicketDto.categoryId,
       category,
       priorityId: priority?.id || null,
@@ -119,16 +159,6 @@ export class TicketsService {
       slaResponseBreached: false,
       slaResolutionBreached: false,
     });
-
-    if (createTicketDto.assignedToId) {
-      const assignedUser = await this.userRepository.findOne({
-        where: { id: createTicketDto.assignedToId },
-      });
-      if (!assignedUser) {
-        throw new NotFoundException('Assigned user not found');
-      }
-      ticket.assignedTo = assignedUser;
-    }
 
     if (createTicketDto.slaResponseDue) {
       ticket.slaResponseDue = new Date(createTicketDto.slaResponseDue);
@@ -185,6 +215,9 @@ export class TicketsService {
       if (filterDto.statusId) {
         filteredCondition.statusId = filterDto.statusId;
       }
+      if (filterDto.departmentId) {
+        filteredCondition.departmentId = filterDto.departmentId;
+      }
       if (filterDto.categoryId) {
         filteredCondition.categoryId = filterDto.categoryId;
       }
@@ -195,7 +228,7 @@ export class TicketsService {
     });
     const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
       where: baseConditions,
-      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
+      relations: ['assignedTo', 'createdBy', 'department', 'category', 'status', 'priority'],
       order: { createdAt: 'DESC' },
       skip: (filterDto.page - 1) * filterDto.limit,
       take: filterDto.limit,
@@ -221,8 +254,18 @@ export class TicketsService {
       throw new NotFoundException('Ticket not found');
     }
 
-    const isITManager = userRoleKeys.includes('it_manager');
-    if (!(ticket.createdById === userId || (isITManager && ticket.assignedToId === userId))) {
+    const roleAssignmentMap = {
+      manager: ticket.assignedToManagerId,
+      it_executive: ticket.assignedToExecutiveId,
+    };
+    
+    const hasAccess =
+      ticket.createdById === userId ||
+      userRoleKeys.some(
+        (role) => roleAssignmentMap[role] === userId
+      );
+    
+    if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this ticket');
     }
 
@@ -238,8 +281,18 @@ export class TicketsService {
       throw new NotFoundException('Ticket not found');
     }
 
-    const isITManager = userRoleKeys.includes('it_manager');
-    if (!(ticket.createdById === userId || (isITManager && ticket.assignedToId === userId))) {
+    const roleAssignmentMap = {
+      manager: ticket.assignedToManagerId,
+      it_executive: ticket.assignedToExecutiveId,
+    };
+    
+    const hasAccess =
+      ticket.createdById === userId ||
+      userRoleKeys.some(
+        (role) => roleAssignmentMap[role] === userId
+      );
+    
+    if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this ticket');
     }
     return ticket;
@@ -258,31 +311,6 @@ export class TicketsService {
     }
 
     const historyEntries: TicketHistory[] = [];
-
-    if (updateTicketDto.assignedToId && updateTicketDto.assignedToId !== ticket.assignedToId) {
-      const assignedUser = await this.userRepository.findOne({
-        where: { id: updateTicketDto.assignedToId },
-      });
-      if (!assignedUser) {
-        throw new NotFoundException('Assigned user not found');
-      }
-      
-      // Create history entry for assignment change
-      const assignHistory = this.ticketHistoryRepository.create({
-        ticketId: ticket.id,
-        ticket,
-        changedById: userId,
-        changedBy: user,
-        changeType: ChangeType.ASSIGNED,
-        fieldName: 'assigned_to',
-        oldValue: ticket.assignedToId || 'Unassigned',
-        newValue: updateTicketDto.assignedToId,
-      });
-      historyEntries.push(assignHistory);
-
-      ticket.assignedTo = assignedUser;
-      ticket.assignedToId = updateTicketDto.assignedToId;
-    }
 
     if (updateTicketDto.statusId && updateTicketDto.statusId !== ticket.statusId) {
       const newStatus = await this.statusRepository.findOne({
@@ -475,10 +503,6 @@ export class TicketsService {
   }
 
   async remove(id: string, userId: string, userRoleKeys: string[]): Promise<void> {
-    const isITManager = userRoleKeys.includes('it_manager');
-    if (!isITManager) {
-      throw new ForbiddenException('Only IT managers can delete tickets');
-    }
 
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
@@ -581,7 +605,7 @@ export class TicketsService {
     // Return ticket with relations
     return this.ticketRepository.findOne({
       where: { id: ticket.id },
-      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority', 'comments', 'history'],
+      relations: ['assignedTo', 'createdBy', 'department', 'category', 'status', 'priority', 'comments', 'history'],
     });
   }
 
@@ -590,8 +614,8 @@ export class TicketsService {
     filterDto: FilterTicketsDto,
   ): Promise<any> {
     const whereConditions: FindOptionsWhere<Ticket>[] = [
-      { assignedToId: userId },
-      { assignedToId: null },
+      { assignedToManagerId: userId },
+      { assignedToManagerId: null },
     ];
 
     // Apply filters if provided
@@ -599,6 +623,9 @@ export class TicketsService {
       const filteredCondition = { ...condition };
       if (filterDto.statusId) {
         filteredCondition.statusId = filterDto.statusId;
+      }
+      if (filterDto.departmentId) {
+        filteredCondition.departmentId = filterDto.departmentId;
       }
       if (filterDto.categoryId) {
         filteredCondition.categoryId = filterDto.categoryId;
@@ -611,7 +638,52 @@ export class TicketsService {
 
     const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
       where: baseConditions,
-      relations: ['assignedTo', 'createdBy', 'category', 'status', 'priority'],
+      relations: ['assignedTo', 'createdBy','department', 'category', 'status', 'priority'],
+      order: { createdAt: 'DESC' },
+      skip: (filterDto.page - 1) * filterDto.limit,
+      take: filterDto.limit,
+    });
+    return {
+      data,
+      meta: {
+        total,
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / filterDto.limit),
+      },
+    };
+  }
+
+  async findAllForITExecutive(
+    userId: string,
+    filterDto: FilterTicketsDto,
+  ): Promise<any> {
+    const whereConditions: FindOptionsWhere<Ticket>[] = [
+      { assignedToExecutiveId: userId },
+      { assignedToExecutiveId: null },
+    ];
+
+    // Apply filters if provided
+    const baseConditions = whereConditions.map((condition) => {
+      const filteredCondition = { ...condition };
+      if (filterDto.statusId) {
+        filteredCondition.statusId = filterDto.statusId;
+      }
+      if (filterDto.departmentId) {
+        filteredCondition.departmentId = filterDto.departmentId;
+      }
+      if (filterDto.categoryId) {
+        filteredCondition.categoryId = filterDto.categoryId;
+      }
+      if (filterDto.priorityId) {
+        filteredCondition.priorityId = filterDto.priorityId;
+      }
+      return filteredCondition;
+    });
+
+    const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
+      where: baseConditions,
+      relations: ['assignedTo', 'createdBy','department', 'category', 'status', 'priority'],
       order: { createdAt: 'DESC' },
       skip: (filterDto.page - 1) * filterDto.limit,
       take: filterDto.limit,
@@ -670,10 +742,6 @@ export class TicketsService {
         return;
       }
 
-      // Determine which user to notify (prefer assigned user, fallback to creator)
-      const userToNotify = fullTicket.assignedTo || fullTicket.createdBy;
-
-
       const notificationRule = await this.notificationRuleRepository.findOne({
         where: {
           event: TicketEvent.STATUS_CHANGE,
@@ -693,6 +761,243 @@ export class TicketsService {
       // Log error but don't throw - notification failure shouldn't break ticket update
       console.error('Failed to publish status change event:', error);
     }
+  }
+
+  async getTicketHistories(
+    filters: {
+      ticketId?: string;
+      ticketNumber?: string;
+      assignedTo?: string;
+      changeType?: ChangeType;
+      fromDate?: Date;
+      toDate?: Date;
+    },
+    pagination: {
+      page: number;
+      limit: number;
+      sortBy?: string;
+      order?: 'ASC' | 'DESC';
+    },
+    userId: string, userRoleKeys: string[]
+  ) {
+    const { page, limit, sortBy = 'th.createdAt', order = 'DESC' } = pagination;
+  
+    const query = this.ticketHistoryRepository
+      .createQueryBuilder('th')
+      .leftJoinAndSelect('th.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.createdBy', 'createdBy')
+      .leftJoinAndSelect('ticket.category', 'category')
+      .leftJoinAndSelect('ticket.priority', 'priority')
+      .leftJoinAndSelect('ticket.status', 'status')
+      .leftJoinAndSelect('ticket.assignedTo', 'assignedTo')
+      .leftJoinAndSelect('th.changedBy', 'changedBy')
+      .select([
+        'ticket.id AS "ticketId"',
+        'ticket.ticketNumber AS "ticketNumber"',
+        'ticket.createdById AS "createdById"',
+        'createdBy.fullName AS "createdByFullName"',
+        'ticket.category.name AS "categoryName"',
+        'ticket.priority.name AS "priorityName"',
+        'ticket.status.name AS "statusName"',
+        `
+        json_agg(
+          json_build_object(
+            'changeType', th.changeType,
+            'fieldName', th.fieldName,
+            'oldValue', th.oldValue,
+            'newValue', th.newValue,
+            'changedById', changedBy.id,
+            'changedByFullName', changedBy.fullName,
+            'createdAt', th.createdAt
+          )
+          ORDER BY th.createdAt DESC
+        ) AS history
+        `,
+      ])
+      .groupBy('ticket.id')
+      .addGroupBy('ticket.ticketNumber');
+  
+    // 🔹 Filters from Ticket entity
+    if (filters.ticketId) {
+      query.andWhere('ticket.id = :ticketId', { ticketId: filters.ticketId });
+    }
+  
+    if (filters.ticketNumber) {
+      query.andWhere('ticket.ticketNumber ILIKE :ticketNumber', {
+        ticketNumber: `%${filters.ticketNumber}%`,
+      });
+    }
+  
+    if (filters.assignedTo && userRoleKeys.includes('super_admin')) {
+      query.andWhere('(assignedToManager.id = :assignedTo OR assignedToExecutive.id = :assignedTo)', {
+        assignedTo: filters.assignedTo,
+      });
+    }
+  
+    // 🔹 Filters from TicketHistory
+    if (filters.changeType) {
+      query.andWhere('th.changeType = :changeType', {
+        changeType: filters.changeType,
+      });
+    }
+  
+    if (filters.fromDate && filters.toDate) {
+      query.andWhere('th.createdAt BETWEEN :from AND :to', {
+        from: filters.fromDate,
+        to: filters.toDate,
+      });
+    }
+  
+    // 🔹 Role-based restriction
+    if (userRoleKeys.includes('manager')) {
+      query.andWhere('assignedToManager.id = :userId', { userId });
+    }
+
+    if (userRoleKeys.includes('it_executive')) {
+      query.andWhere('assignedToExecutive.id = :userId', { userId });
+    }
+  
+    query
+      .orderBy(sortBy, order)
+      .skip((page - 1) * limit)
+      .take(limit);
+      
+    const [data, total] = await query.getManyAndCount();
+  
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+      },
+    };
+  }
+  
+  async assignTicketToManagerHimself(assignTicketDto: AssignTicketDto, userId: string): Promise<Ticket> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id: assignTicketDto.ticketId },
+      relations: ['category', 'assignedToManager', 'status'],
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: assignTicketDto.userId },
+      relations: ['roles', 'departments'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify user is an IT Manager
+    const isManager = user.roles?.some((role) => role.key === 'manager');
+    if (!isManager) {
+      throw new BadRequestException('Can only assign tickets to Managers');
+    }
+
+    // Verify ticket category matches IT Manager's categories
+    if (ticket.departmentId) {
+      const hasDepartment = user.departments?.some(
+        (d) => d.id === ticket.departmentId,
+      );
+      if (!hasDepartment) {
+        throw new BadRequestException('Ticket department does not match any of the IT Manager\'s assigned departments');
+      }
+    }
+
+    ticket.assignedToManager = user;
+    ticket.assignedToManagerId = user.id;
+
+    const status = await this.statusRepository.findOne({ where: { name: 'Assigned' } });
+    
+    const notificationRule = await this.notificationRuleRepository.findOne({
+      where: {
+        event: TicketEvent.ASSIGN,
+      },
+    });
+    if (notificationRule) {
+    await this.rabbitMQService.publishTicketStatusChange({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      oldStatus: ticket.status.name,
+      newStatus: status.name,
+      comment: 'Ticket assigned to IT Manager',
+      event: TicketEvent.ASSIGN,
+      });
+    }
+
+    if (status) {
+      ticket.status = status;
+      ticket.statusId = status.id;
+    }
+    return this.ticketRepository.save(ticket);
+  }
+
+  async assignTicketToITExecutive(assignTicketDto: AssignTicketDto): Promise<Ticket> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id: assignTicketDto.ticketId },
+      relations: ['category', 'assignedToExecutive', 'status'],
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: assignTicketDto.userId },
+      relations: ['roles', 'userCategories', 'userCategories.category'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify user is an IT Executive
+    const isITExecutive = user.roles?.some((role) => role.key === 'it_executive');
+    if (!isITExecutive) {
+      throw new BadRequestException('Can only assign tickets to IT Executives');
+    }
+
+    // Verify ticket department matches IT Executive's departments
+    if (ticket.categoryId) {
+      const hasCategory = user.userCategories?.some(
+        (uc) => uc.category.id === ticket.categoryId,
+      );
+      if (!hasCategory) {
+        throw new BadRequestException('Ticket category does not match any of the IT Executive\'s assigned categories');
+      }
+    }
+
+    ticket.assignedToExecutive = user;
+    ticket.assignedToExecutiveId = user.id;
+
+    const status = await this.statusRepository.findOne({ where: { name: 'Assigned' } });
+    
+    const notificationRule = await this.notificationRuleRepository.findOne({
+      where: {
+        event: TicketEvent.ASSIGN,
+      },
+    });
+    if (notificationRule) {
+    await this.rabbitMQService.publishTicketStatusChange({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      oldStatus: ticket.status.name,
+      newStatus: status.name,
+      comment: 'Ticket assigned to IT Executive',
+      event: TicketEvent.ASSIGN,
+      });
+    }
+
+    if (status) {
+      ticket.status = status;
+      ticket.statusId = status.id;
+    }
+    return this.ticketRepository.save(ticket);
   }
 }
 

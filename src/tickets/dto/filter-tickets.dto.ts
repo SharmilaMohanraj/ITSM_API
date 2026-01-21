@@ -7,6 +7,10 @@ export class FilterTicketsDto {
 
   @IsOptional()
   @IsUUID()
+  departmentId?: string;
+
+  @IsOptional()
+  @IsUUID()
   categoryId?: string;
 
   @IsOptional()

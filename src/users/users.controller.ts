@@ -7,12 +7,14 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Request,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { FilterUsersDto } from 'src/admin/dto/filter-users.dto';
 
 @Controller('users')
 export class UsersController {
@@ -34,9 +36,9 @@ export class UsersController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('it_manager')
-  findAll() {
-    return this.usersService.findAll();
+  @Roles('manager', 'it_executive')
+  findAll(@Request() req, @Query() query: FilterUsersDto) {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')

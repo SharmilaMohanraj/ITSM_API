@@ -15,6 +15,7 @@ import { TicketHistory } from './ticket-history.entity';
 import { TicketCategory } from './ticket-category.entity';
 import { TicketStatus } from './ticket-status.entity';
 import { TicketPriority } from './ticket-priority.entity';
+import { Department } from './department.entity';
 
 @Entity('tickets')
 export class Ticket {
@@ -30,6 +31,14 @@ export class Ticket {
 
   @Column('text', { nullable: true })
   description: string;
+
+  @Column({ name: 'department_id', nullable: true })
+  @Index()
+  departmentId: string;
+
+  @ManyToOne(() => Department, { nullable: true })
+  @JoinColumn({ name: 'department_id' })
+  department: Department;
 
   @Column({ name: 'category_id', nullable: true })
   categoryId: string;
@@ -59,12 +68,19 @@ export class Ticket {
   @JoinColumn({ name: 'created_by' })
   createdBy: User;
 
-  @Column({ name: 'assigned_to', nullable: true })
-  assignedToId: string;
+  @Column({ name: 'assigned_to_manager', nullable: true })
+  assignedToManagerId: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_to' })
-  assignedTo: User;
+  @JoinColumn({ name: 'assigned_to_manager' })
+  assignedToManager: User;
+
+  @Column({ name: 'assigned_to_executive', nullable: true })
+  assignedToExecutiveId: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'assigned_to_executive' })
+  assignedToExecutive: User;
 
   @Column('jsonb', { name: 'conversation_context', nullable: true })
   conversationContext: Record<string, any>;

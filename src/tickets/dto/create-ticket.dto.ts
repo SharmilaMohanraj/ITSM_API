@@ -15,6 +15,9 @@ export class CreateTicketDto {
   description?: string;
 
   @IsUUID()
+  departmentId: string;
+
+  @IsUUID()
   categoryId: string;
 
   @IsUUID()

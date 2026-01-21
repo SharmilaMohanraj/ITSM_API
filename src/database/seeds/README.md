@@ -21,7 +21,8 @@ ts-node -r tsconfig-paths/register src/database/seeds/run-seeds.ts
 ### 1. Roles Seed (`roles.seed.ts`)
 Seeds the following roles:
 - **employee**: Regular employee role
-- **it_manager**: IT Manager role with ticket management capabilities
+- **manager**: IT Manager role with ticket management capabilities
+- **it_executive**: IT Executive role with ticket management capabilities
 - **super_admin**: Super administrator with full system access
 
 ### 2. Super Admin Seed (`super-admin.seed.ts`)
