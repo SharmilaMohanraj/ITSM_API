@@ -118,8 +118,24 @@ export class TicketsController {
     @Body() updateTicketDto: UpdateTicketDto,
     @Request() req,
   ) {
-    return this.ticketsService.update(
+    return this.ticketsService.updateById(
       id,
+      updateTicketDto,
+      req.user.userId,
+      req.user.roles,
+    );
+  }
+
+  @Patch('number/:ticketNumber')
+  @UseGuards(RolesGuard)
+  @Roles('manager', 'it_executive', 'employee')
+  updateByNumber(
+    @Param('ticketNumber') ticketNumber: string,
+    @Body() updateTicketDto: UpdateTicketDto,
+    @Request() req,
+  ) {
+    return this.ticketsService.updateByNumber(
+      ticketNumber,
       updateTicketDto,
       req.user.userId,
       req.user.roles,

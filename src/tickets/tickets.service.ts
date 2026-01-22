@@ -154,8 +154,10 @@ const managerWithLessActiveTickets =
       createdById: userId,
       createdBy,
       assignedToManagerId: managerWithLessActiveTickets?.userId || null,
+      departmentId: department.id,
       categoryId: createTicketDto.categoryId,
       category,
+      department,
       priorityId: priority?.id || null,
       priority,
       statusId: status?.id || null,
@@ -304,13 +306,33 @@ const managerWithLessActiveTickets =
     return ticket;
   }
 
-  async update(
+  async updateById(
     id: string,
     updateTicketDto: UpdateTicketDto,
     userId: string,
     userRoleKeys: string[],
   ): Promise<Ticket> {
     const ticket = await this.findOne(id, userId, userRoleKeys);
+    return this.update(ticket, updateTicketDto, userId, userRoleKeys);
+  }
+
+  async updateByNumber(
+    ticketNumber: string,
+    updateTicketDto: UpdateTicketDto,
+    userId: string,
+    userRoleKeys: string[],
+  ): Promise<Ticket> {
+    const ticket = await this.findOneByNumber(ticketNumber, userId, userRoleKeys);
+    return this.update(ticket, updateTicketDto, userId, userRoleKeys);
+  }
+
+  async update(
+    ticket:Ticket,
+    updateTicketDto: UpdateTicketDto,
+    userId: string,
+    userRoleKeys: string[],
+  ): Promise<Ticket> {
+
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -619,36 +641,74 @@ const managerWithLessActiveTickets =
     userId: string,
     filterDto: FilterTicketsDto,
   ): Promise<any> {
-    const whereConditions: FindOptionsWhere<Ticket>[] = [
-      { assignedToManagerId: userId },
-      { assignedToManagerId: null },
-    ];
-
-    // Apply filters if provided
-    const baseConditions = whereConditions.map((condition) => {
-      const filteredCondition = { ...condition };
-      if (filterDto.statusId) {
-        filteredCondition.statusId = filterDto.statusId;
-      }
-      if (filterDto.departmentId) {
-        filteredCondition.departmentId = filterDto.departmentId;
-      }
-      if (filterDto.categoryId) {
-        filteredCondition.categoryId = filterDto.categoryId;
-      }
-      if (filterDto.priorityId) {
-        filteredCondition.priorityId = filterDto.priorityId;
-      }
-      return filteredCondition;
+  
+    // 1. Get manager departments
+    const manager = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['departments'],
     });
-
-    const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
-      where: baseConditions,
-      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority'],
-      order: { createdAt: 'DESC' },
-      skip: (filterDto.page - 1) * filterDto.limit,
-      take: filterDto.limit,
-    });
+  
+    if (!manager) {
+      throw new NotFoundException('Manager not found');
+    }
+  
+    const departmentIds = manager.departments.map(d => d.id);
+  
+    // 2. Build query
+    const query = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.assignedToManager', 'assignedToManager')
+      .leftJoinAndSelect('ticket.assignedToExecutive', 'assignedToExecutive')
+      .leftJoinAndSelect('ticket.createdBy', 'createdBy')
+      .leftJoinAndSelect('ticket.department', 'department')
+      .leftJoinAndSelect('ticket.category', 'category')
+      .leftJoinAndSelect('ticket.status', 'status')
+      .leftJoinAndSelect('ticket.priority', 'priority')
+    
+      // 🔹 Main Condition
+      if (departmentIds.length > 0) {
+          query.where('(ticket.assignedToManagerId = :userId OR ticket.departmentId IN (:...departmentIds))', {
+              userId,
+              departmentIds,
+            });
+          } else {
+            query.where('ticket.assignedToManagerId = :userId', { userId });
+          }
+  
+    // 3. Apply Filters
+    if (filterDto.statusId) {
+      query.andWhere('ticket.statusId = :statusId', {
+        statusId: filterDto.statusId,
+      });
+    }
+  
+    if (filterDto.departmentId) {
+      query.andWhere('ticket.departmentId = :departmentId', {
+        departmentId: filterDto.departmentId,
+      });
+    }
+  
+    if (filterDto.categoryId) {
+      query.andWhere('ticket.categoryId = :categoryId', {
+        categoryId: filterDto.categoryId,
+      });
+    }
+  
+    if (filterDto.priorityId) {
+      query.andWhere('ticket.priorityId = :priorityId', {
+        priorityId: filterDto.priorityId,
+      });
+    }
+  
+    // 4. Pagination
+    query
+      .orderBy('ticket.createdAt', 'DESC')
+      .skip((filterDto.page - 1) * filterDto.limit)
+      .take(filterDto.limit);
+  
+    // 5. Execute
+    const [data, total] = await query.getManyAndCount();
+  
     return {
       data,
       meta: {
@@ -659,41 +719,85 @@ const managerWithLessActiveTickets =
       },
     };
   }
+  
 
   async findAllForITExecutive(
     userId: string,
     filterDto: FilterTicketsDto,
   ): Promise<any> {
-    const whereConditions: FindOptionsWhere<Ticket>[] = [
-      { assignedToExecutiveId: userId },
-      { assignedToExecutiveId: null },
-    ];
-
-    // Apply filters if provided
-    const baseConditions = whereConditions.map((condition) => {
-      const filteredCondition = { ...condition };
-      if (filterDto.statusId) {
-        filteredCondition.statusId = filterDto.statusId;
-      }
-      if (filterDto.departmentId) {
-        filteredCondition.departmentId = filterDto.departmentId;
-      }
-      if (filterDto.categoryId) {
-        filteredCondition.categoryId = filterDto.categoryId;
-      }
-      if (filterDto.priorityId) {
-        filteredCondition.priorityId = filterDto.priorityId;
-      }
-      return filteredCondition;
+    // 1. Get executive departments
+    const itExecutive = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['departments', 'userCategories'],
     });
+  
+    if (!itExecutive) {
+      throw new NotFoundException('IT Executive not found');
+    }
+  
+    const departmentIds = itExecutive.departments.map(department => department.id);
+    const categoryIds = itExecutive.userCategories.map(userCategory => userCategory.categoryId);
 
-    const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
-      where: baseConditions,
-      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority'],
-      order: { createdAt: 'DESC' },
-      skip: (filterDto.page - 1) * filterDto.limit,
-      take: filterDto.limit,
-    });
+    // 2. Build query
+    const query = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.assignedToManager', 'assignedToManager')
+      .leftJoinAndSelect('ticket.assignedToExecutive', 'assignedToExecutive')
+      .leftJoinAndSelect('ticket.createdBy', 'createdBy')
+      .leftJoinAndSelect('ticket.department', 'department')
+      .leftJoinAndSelect('ticket.category', 'category')
+      .leftJoinAndSelect('ticket.status', 'status')
+      .leftJoinAndSelect('ticket.priority', 'priority')
+  
+      // 🔹 Main Condition
+      if (departmentIds.length > 0) {
+        query.where('(ticket.assignedToExecutiveId = :userId OR ticket.departmentId IN (:...departmentIds))', {
+          userId,
+          departmentIds,
+        });
+        if (categoryIds.length > 0) {
+          query.andWhere('ticket.categoryId IN (:...categoryIds)', {
+            categoryIds,
+          });
+        }
+      } else {
+        query.where('ticket.assignedToExecutiveId = :userId', { userId });
+      }
+  
+    // 3. Apply Filters
+    if (filterDto.statusId) {
+      query.andWhere('ticket.statusId = :statusId', {
+        statusId: filterDto.statusId,
+      });
+    }
+  
+    if (filterDto.departmentId) {
+      query.andWhere('ticket.departmentId = :departmentId', {
+        departmentId: filterDto.departmentId,
+      });
+    }
+  
+    if (filterDto.categoryId) {
+      query.andWhere('ticket.categoryId = :categoryId', {
+        categoryId: filterDto.categoryId,
+      });
+    }
+  
+    if (filterDto.priorityId) {
+      query.andWhere('ticket.priorityId = :priorityId', {
+        priorityId: filterDto.priorityId,
+      });
+    }
+  
+    // 4. Pagination
+    query
+      .orderBy('ticket.createdAt', 'DESC')
+      .skip((filterDto.page - 1) * filterDto.limit)
+      .take(filterDto.limit);
+  
+    // 5. Execute
+    const [data, total] = await query.getManyAndCount();
+  
     return {
       data,
       meta: {
