@@ -1025,14 +1025,14 @@ const managerWithLessActiveTickets =
     }
 
     // Verify ticket department matches IT Executive's departments
-    if (ticket.categoryId) {
-      const hasCategory = user.userCategories?.some(
-        (uc) => uc.category.id === ticket.categoryId,
-      );
-      if (!hasCategory) {
-        throw new BadRequestException('Ticket category does not match any of the IT Executive\'s assigned categories');
-      }
-    }
+    // if (ticket.categoryId) {
+    //   const hasCategory = user.userCategories?.some(
+    //     (uc) => uc.category.id === ticket.categoryId,
+    //   );
+    //   if (!hasCategory) {
+    //     throw new BadRequestException('Ticket category does not match any of the IT Executive\'s assigned categories');
+    //   }
+    // }
 
     const oldAssignedToExecutive = ticket.assignedToExecutive;
 
