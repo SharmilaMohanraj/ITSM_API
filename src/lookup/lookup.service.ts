@@ -22,9 +22,15 @@ export class LookupService {
     private departmentRepository: Repository<Department>,
   ) {}
 
-  async findAllCategories(): Promise<TicketCategory[]> {
+  async findAllCategories(departmentId?: string): Promise<TicketCategory[]> {
+    const whereCondition: any = { isActive: true };
+    
+    if (departmentId) {
+      whereCondition.departmentId = departmentId;
+    }
+
     return this.categoryRepository.find({
-      where: { isActive: true },
+      where: whereCondition,
       order: { name: 'ASC' },
     });
   }

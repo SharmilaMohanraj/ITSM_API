@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query, ParseUUIDPipe } from '@nestjs/common';
 import { LookupService } from './lookup.service';
 import { ChangeType } from 'src/entities/ticket-history.entity';
 
@@ -7,8 +7,8 @@ export class LookupController {
   constructor(private readonly lookupService: LookupService) {}
 
   @Get('categories')
-  getCategories() {
-    return this.lookupService.findAllCategories();
+  getCategories(@Query('departmentId', new ParseUUIDPipe({ optional: true })) departmentId?: string) {
+    return this.lookupService.findAllCategories(departmentId);
   }
 
   @Get('statuses')
