@@ -240,7 +240,7 @@ const managerWithLessActiveTickets =
     });
     const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
       where: baseConditions,
-      relations: ['assignedToManager', 'createdBy', 'department', 'category', 'status', 'priority'],
+      relations: ['assignedToManager', 'createdBy', 'department', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
       skip: (filterDto.page - 1) * filterDto.limit,
       take: filterDto.limit,
@@ -287,7 +287,7 @@ const managerWithLessActiveTickets =
   async findOneByNumber(ticketNumber: string, userId: string, userRoleKeys: string[]): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { ticketNumber },
-      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy', 'category', 'status', 'priority'],
+      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy', 'category', 'status', 'priority', 'comments'],
     });
     if (!ticket) {
       throw new NotFoundException('Ticket not found');
@@ -670,7 +670,7 @@ const managerWithLessActiveTickets =
 
     const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
       where: baseConditions,
-      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority'],
+      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
       skip: (filterDto.page - 1) * filterDto.limit,
       take: filterDto.limit,
@@ -716,7 +716,7 @@ const managerWithLessActiveTickets =
 
     const [data, total]: [Ticket[], number] = await this.ticketRepository.findAndCount({
       where: baseConditions,
-      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority'],
+      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
       skip: (filterDto.page - 1) * filterDto.limit,
       take: filterDto.limit,
@@ -754,7 +754,7 @@ const managerWithLessActiveTickets =
 
     return this.ticketRepository.findOne({
       where: whereCondition,
-      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy', 'category', 'status', 'priority'],
+      relations: ['assignedToManager', 'assignedToExecutive', 'createdBy', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
     });
   }
