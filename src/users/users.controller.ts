@@ -38,7 +38,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('manager', 'it_executive')
   findAll(@Request() req, @Query() query: FilterUsersDto) {
-    return this.usersService.findAll(query);
+    return this.usersService.findAllITExecutives(query, req.user.userId, req.user.roles);
   }
 
   @Get(':id')

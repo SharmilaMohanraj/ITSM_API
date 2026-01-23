@@ -55,17 +55,6 @@ export class UsersService {
       }
     }
 
-    // If creating IT Manager, automatically add employee role
-    let finalRoles = requestedRoles;
-    if (hasManagerRole || hasITExecutiveRole) {
-      const employeeRole = await this.roleRepository.findOne({
-        where: { key: 'employee' },
-      });
-      if (employeeRole && !requestedRoles.some((r) => r.id === employeeRole.id)) {
-        finalRoles = [...requestedRoles, employeeRole];
-      }
-    }
-
     let departments: Department[] = [];
     if (createUserDto.departmentIds) {
       departments = await this.departmentRepository.find({
@@ -81,34 +70,77 @@ export class UsersService {
     const user = this.userRepository.create({
       ...userData,
       passwordHash: hashedPassword,
-      roles: finalRoles,
+      roles: requestedRoles,
       departments: departments,
     });
 
     return this.userRepository.save(user);
   }
 
-  async findAll(query: FilterUsersDto): Promise<any> {
-    const { roleId, departmentId, categoryId, search, page, limit } = query;
-    const whereConditions: FindOptionsWhere<User>[] = [];
-    if (roleId) {
-      whereConditions.push({ roles: { id: roleId } });
+  async findAllITExecutives(query: FilterUsersDto, userId: string, userRoleKeys: string[]): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['departments'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
+
+    const userDepartmentIds = user.departments?.map((department) => department.id) || [];
+    
+    // If user has no departments, return empty result
+    if (userDepartmentIds.length === 0) {
+      return {
+        data: [],
+        meta: {
+          total: 0,
+          page: query.page || 1,
+          limit: query.limit || 10,
+        },
+      };
+    }
+
+    const { roleId, departmentId, categoryId, search, page = 1, limit = 10 } = query;
+    
+    // Validate departmentId if provided - must be one of user's departments
     if (departmentId) {
-      whereConditions.push({ departments: { id: departmentId } });
+      if (!userDepartmentIds.includes(departmentId)) {
+        throw new ForbiddenException('You can only access departments under your management');
+      }
     }
+
+    // Build where condition - always filter by it_executive role
+    const whereCondition: FindOptionsWhere<User> = {
+      roles: { key: 'it_executive' },
+    };
+
+    // Add department filter
+    if (departmentId) {
+      // Use the provided departmentId (already validated)
+      whereCondition.departments = { id: departmentId };
+    } else {
+      // Automatically filter by user's departments
+      whereCondition.departments = { id: In(userDepartmentIds) };
+    }
+
+    // Add category filter if provided
     if (categoryId) {
-      whereConditions.push({ userCategories: { categoryId: categoryId } });
+      whereCondition.userCategories = { categoryId: categoryId };
     }
+
+    // Add search filter if provided
     if (search) {
-      whereConditions.push({ fullName: Like(`%${search}%`) });
+      whereCondition.fullName = Like(`%${search}%`);
     }
+
     const [users, total] = await this.userRepository.findAndCount({
-      where: whereConditions,
+      where: whereCondition,
       relations: ['roles', 'departments', 'userCategories', 'userCategories.category'],
       skip: (page - 1) * limit,
       take: limit,
     });
+
     return {
       data: users,
       meta: {
