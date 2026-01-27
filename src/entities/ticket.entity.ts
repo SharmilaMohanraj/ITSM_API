@@ -68,6 +68,13 @@ export class Ticket {
   @JoinColumn({ name: 'created_by' })
   createdBy: User;
 
+  @Column({ name: 'created_for', nullable: true })
+  createdForId: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'created_for' })
+  createdFor: User;
+
   @Column({ name: 'assigned_to_manager', nullable: true })
   assignedToManagerId: string;
 

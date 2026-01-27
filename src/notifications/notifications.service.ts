@@ -25,28 +25,28 @@ export class NotificationsService {
   async create(message: string, event: TicketEvent, oldStatus?: string, newStatus?: string, ticketId?: string): Promise<Notification> {
     const notificationRule: NotificationRule | null = await this.notificationRuleRepository.findOne({ where: { event } });
     if (notificationRule) {
-      const ticket = await this.ticketRepository.findOne({ where: { id: ticketId }, relations: ['category', 'priority', 'status', 'createdBy'] });
-      const createdBy = ticket.createdBy;
+      const ticket = await this.ticketRepository.findOne({ where: { id: ticketId }, relations: ['category', 'priority', 'status', 'createdFor'] });
+      const createdFor = ticket.createdFor;
       if (ticket) {
-        if (notificationRule.recipientType.includes(RecipientType.CREATED_BY) && createdBy) {
+        if (notificationRule.recipientType.includes(RecipientType.CREATED_BY) && createdFor) {
           const notification = await this.notificationRepository.create({
-            userId: createdBy.id,
-            user: createdBy,
+            userId: createdFor.id,
+            user: createdFor,
             message,
             status: NotificationStatus.UNREAD,
             ticketId: ticketId || null,
           });
           await this.notificationRepository.save(notification);
           if (event === TicketEvent.CREATE) {
-            await this.emailService.sendTicketCreatedEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created');
+            await this.emailService.sendTicketCreatedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created');
           } else if (event === TicketEvent.STATUS_CHANGE) {
             if (newStatus === 'Resolved') {
-              await this.emailService.sendTicketResolvedEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, 'ticket-resolved');
+              await this.emailService.sendTicketResolvedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, 'ticket-resolved');
             } else {
-              await this.emailService.sendTicketStatusChangeEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change');
+              await this.emailService.sendTicketStatusChangeEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change');
             }
           } else if (event === TicketEvent.ASSIGN) {
-            await this.emailService.sendTicketAssignedEmail(createdBy.email, createdBy.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned');
+            await this.emailService.sendTicketAssignedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned');
           }
         }
         if (notificationRule.recipientType.includes(RecipientType.ASSIGNED_TO)) {
@@ -54,8 +54,8 @@ export class NotificationsService {
             const user = await this.userRepository.findOne({ where: { id: ticket.assignedToManagerId } });
             if (user) {
               const notification = await this.notificationRepository.create({
-                userId: createdBy.id,
-                user: createdBy,
+                userId: createdFor.id,
+                user: createdFor,
                 managerId: ticket.assignedToManagerId,
                 manager: user,
                 message,
@@ -80,8 +80,8 @@ export class NotificationsService {
           const user = await this.userRepository.findOne({ where: { id: ticket.assignedToExecutiveId } });
           if (user) {
             const notification = await this.notificationRepository.create({
-              userId: createdBy.id,
-              user: createdBy,
+              userId: createdFor.id,
+              user: createdFor,
               executiveId: ticket.assignedToExecutiveId,
               executive: user,
               message,
@@ -120,8 +120,8 @@ export class NotificationsService {
         .getMany();
         for (const user of departmentITManagers) {
           const notification = await this.notificationRepository.create({
-            userId: createdBy.id,
-            user: createdBy,
+            userId: createdFor.id,
+            user: createdFor,
             managerId: user.id,
             manager: user,
             message,

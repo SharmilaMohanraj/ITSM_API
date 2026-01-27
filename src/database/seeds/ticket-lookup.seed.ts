@@ -216,6 +216,10 @@ const TICKET_STATUSES: StatusSeedData[] = [
     name: 'Escalated',
     description: 'Ticket has been escalated to higher priority or management',
   },
+  {
+    name: 'Re Open',
+    description: 'Ticket has been re-opened',
+  },
 ];
 
 const NOTIFICATION_RULES: NotificationRuleSeedData[] = [

@@ -30,6 +30,10 @@ export class CreateTicketDto {
 
   @IsOptional()
   @IsUUID()
+  createdForId?: string;
+
+  @IsOptional()
+  @IsUUID()
   assignedToId?: string;
 
   @IsOptional()

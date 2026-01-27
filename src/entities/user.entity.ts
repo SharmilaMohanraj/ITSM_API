@@ -72,6 +72,9 @@ export class User {
   @OneToMany(() => Ticket, (ticket) => ticket.createdBy)
   createdTickets: Ticket[];
 
+  @OneToMany(() => Ticket, (ticket) => ticket.createdFor)
+  createdForTickets: Ticket[];
+
   @OneToMany(() => Ticket, (ticket) => ticket.assignedToManager)
   assignedToManagerTickets: Ticket[];
 
