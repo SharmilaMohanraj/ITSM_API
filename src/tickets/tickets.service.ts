@@ -851,8 +851,10 @@ const managerWithLessActiveTickets =
         'ticket.ticketNumber AS "ticketNumber"',
         'ticket.createdById AS "createdById"',
         'createdBy.fullName AS "createdByFullName"',
+        'createdBy.uniqueKey AS "createdByUniqueKey"',
         'ticket.createdForId AS "createdForId"',
         'createdFor.fullName AS "createdForFullName"',
+        'createdFor.uniqueKey AS "createdForUniqueKey"',
         'category.name AS "categoryName"',
         'priority.name AS "priorityName"',
         'status.name AS "statusName"',
@@ -875,8 +877,10 @@ const managerWithLessActiveTickets =
       .addGroupBy('ticket.ticketNumber')
       .addGroupBy('ticket.createdById')
       .addGroupBy('createdBy.full_name')
+      .addGroupBy('createdBy.unique_key')
       .addGroupBy('ticket.createdForId')
       .addGroupBy('createdFor.full_name')
+      .addGroupBy('createdFor.unique_key')
       .addGroupBy('category.name')
       .addGroupBy('priority.name')
       .addGroupBy('status.name')

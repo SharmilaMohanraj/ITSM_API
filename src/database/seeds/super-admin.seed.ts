@@ -7,13 +7,15 @@ interface SuperAdminSeedData {
   email: string;
   password: string;
   fullName: string;
-}
+  uniqueKey: string;
+} 
 
 const SUPER_ADMINS: SuperAdminSeedData[] = [
   {
     email: 'superadmin@itsm.com',
     password: 'SuperAdmin@123',
     fullName: 'Super Administrator',
+    uniqueKey: 'SUPER-USR-1001',
   },
 ];
 

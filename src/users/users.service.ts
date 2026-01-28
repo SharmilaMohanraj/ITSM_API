@@ -19,6 +19,30 @@ export class UsersService {
     private departmentRepository: Repository<Department>,
   ) {}
 
+  private getUniqueKeyPrefixFromRoles(roleKeys: string[]): 'EMP-USR' | 'MGR-USR' | 'EXC-USR' | 'ADMIN-USR' {
+    // If multiple roles, pick the "highest" one for key generation
+    if (roleKeys.includes('super_admin')) return 'ADMIN-USR';
+    if (roleKeys.includes('manager')) return 'MGR-USR';
+    if (roleKeys.includes('it_executive')) return 'EXC-USR';
+    return 'EMP-USR';
+  }
+
+  private async generateNextUniqueKey(prefix: string): Promise<string> {
+    // Format: PREFIX-<number>, example: EMP-USR-1001
+    // Get the max numeric suffix for this prefix and increment.
+    const pattern = `${prefix}-%`;
+
+    const raw = await this.userRepository
+      .createQueryBuilder('user')
+      .select(`MAX(CAST(split_part(user.uniqueKey, '-', 3) AS INTEGER))`, 'max')
+      .where('user.uniqueKey LIKE :pattern', { pattern })
+      .getRawOne<{ max: string | null }>();
+
+    const maxExisting = raw?.max ? Number(raw.max) : 0;
+    const next = Math.max(1000, maxExisting) + 1; // start at 1001 if none
+    return `${prefix}-${next}`;
+  }
+
   async create(createUserDto: CreateUserDto, createdByRoleKeys?: string[]): Promise<User> {
     const existingUser = await this.userRepository.findOne({
       where: { email: createUserDto.email },
@@ -67,14 +91,33 @@ export class UsersService {
     
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const { password, roleIds, ...userData } = createUserDto;
-    const user = this.userRepository.create({
-      ...userData,
-      passwordHash: hashedPassword,
-      roles: requestedRoles,
-      departments: departments,
-    });
 
-    return this.userRepository.save(user);
+    const roleKeys = requestedRoles.map((r) => r.key);
+    const prefix = this.getUniqueKeyPrefixFromRoles(roleKeys);
+
+    // Generate uniqueKey with simple retry on collision (unique constraint)
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const uniqueKey = await this.generateNextUniqueKey(prefix);
+        const user = this.userRepository.create({
+          ...userData,
+          passwordHash: hashedPassword,
+          roles: requestedRoles,
+          departments: departments,
+          uniqueKey,
+        });
+        return await this.userRepository.save(user);
+      } catch (err) {
+        lastError = err;
+        // If collision/race on uniqueKey, retry; otherwise rethrow
+        const msg = (err as any)?.message || '';
+        const code = (err as any)?.code;
+        const isUniqueViolation = code === '23505' || /duplicate key value|unique/i.test(msg);
+        if (!isUniqueViolation) throw err;
+      }
+    }
+    throw lastError;
   }
 
   async findAllITExecutives(query: FilterUsersDto, userId: string, userRoleKeys: string[]): Promise<any> {
