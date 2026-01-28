@@ -226,7 +226,7 @@ const managerWithLessActiveTickets =
     // Return ticket with relations including history
     return this.ticketRepository.findOne({
       where: { id: savedTicket.id },
-      relations: ['assignedToManager', 'createdBy', 'createdFor', 'category', 'status', 'priority', 'history'],
+      relations: ['assignedToManager', 'createdBy', 'createdFor', 'department', 'category', 'status', 'priority', 'history'],
     });
   }
 
@@ -382,18 +382,20 @@ const managerWithLessActiveTickets =
       });
       historyEntries.push(statusHistory);
 
-      ticket.status = newStatus;
-      ticket.statusId = newStatus.id;
-
       if (newStatus.name === 'Resolved' && !ticket.resolvedAt) {
         ticket.resolvedAt = new Date();
       }
 
+      if(newStatus.name === 'Closed' && userId !== ticket.createdForId) {
+        throw new BadRequestException('Only the employee for whom the ticket was created can close the ticket');
+      }
       if (newStatus.name === 'Closed' && !ticket.closedAt) {
         ticket.closedAt = new Date();
       }
 
-      // Status change event will be published after ticket is saved
+      ticket.status = newStatus;
+      ticket.statusId = newStatus.id;
+      
     }
 
     if (updateTicketDto.priorityId && updateTicketDto.priorityId !== ticket.priorityId) {
@@ -598,8 +600,8 @@ const managerWithLessActiveTickets =
       ticket.resolvedAt = new Date();
     }
 
-    if (newStatus.name === 'Closed' && !ticket.closedAt) {
-      ticket.closedAt = new Date();
+    if (newStatus.name === 'Closed') {
+      throw new BadRequestException('Only the employee for whom the ticket was created can close the ticket');
     }
 
     // Save ticket
