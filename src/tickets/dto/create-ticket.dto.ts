@@ -14,11 +14,13 @@ export class CreateTicketDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
   @IsUUID()
-  departmentId: string;
+  departmentId?: string;
 
+  @IsOptional()
   @IsUUID()
-  categoryId: string;
+  categoryId?: string;
 
   @IsUUID()
   @IsOptional()

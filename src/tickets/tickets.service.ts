@@ -46,11 +46,12 @@ export class TicketsService {
     private rabbitMQService: RabbitMQService,
   ) {}
 
-  private generateTicketNumber(category: TicketCategory): string {
+  private generateTicketNumber(category?: TicketCategory): string {
     const prefix = 'TKT';
+    const categoryCode = category?.code || 'GEN';
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${prefix}-${category.code}-${timestamp}-${random}`;
+    return `${prefix}-${categoryCode}-${timestamp}-${random}`;
   }
 
   async create(createTicketDto: CreateTicketDto, userId: string): Promise<Ticket> {
@@ -71,23 +72,30 @@ export class TicketsService {
       }
     }
 
-    const department = await this.departmentRepository.findOne({
-      where: { id: createTicketDto.departmentId },
-    });
-    if (!department) {
-      throw new NotFoundException('Department not found');
+    let department: Department | null = null;
+    if (createTicketDto.departmentId) {
+      department = await this.departmentRepository.findOne({
+        where: { id: createTicketDto.departmentId },
+      });
+      if (!department) {
+        throw new NotFoundException('Department not found');
+      }
     }
 
     // Validate category, priority, and status
-    const category = await this.categoryRepository.findOne({
-      where: { id: createTicketDto.categoryId },
-    });
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
+    let category: TicketCategory | null = null;
+    if (createTicketDto.categoryId) {
+      category = await this.categoryRepository.findOne({
+        where: { id: createTicketDto.categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
 
-    if (category.departmentId !== department.id) {
-      throw new BadRequestException('Category does not belong to the selected department');
+      // Only validate category belongs to department if both are provided
+      if (department && category.departmentId !== department.id) {
+        throw new BadRequestException('Category does not belong to the selected department');
+      }
     }
 
     let priority: TicketPriority | null = null;
@@ -163,7 +171,7 @@ const managerWithLessActiveTickets =
     if (!createTicketDto.createdForId) {
       createdFor = createdBy;
     }
-    const ticketNumber = this.generateTicketNumber(category);
+    const ticketNumber = this.generateTicketNumber(category || undefined);
     const ticket = this.ticketRepository.create({
       title: createTicketDto.title,
       description: createTicketDto.description,
@@ -173,10 +181,10 @@ const managerWithLessActiveTickets =
       createdForId: createTicketDto.createdForId || userId,
       createdFor,
       assignedToManagerId: managerWithLessActiveTickets?.userId || null,
-      departmentId: department.id,
-      categoryId: createTicketDto.categoryId,
-      category,
-      department,
+      departmentId: department?.id || null,
+      categoryId: category?.id || null,
+      category: category || undefined,
+      department: department || undefined,
       priorityId: priority?.id || null,
       priority,
       statusId: status?.id || null,
@@ -218,7 +226,7 @@ const managerWithLessActiveTickets =
     await this.rabbitMQService.publishTicketCreateEvent({
       ticketId: ticket.id,
       ticketNumber: ticket.ticketNumber,
-      categoryName: ticket.category.name,
+      categoryName: ticket.category?.name || 'General',
       priorityName: ticket.priority.name,
       event: TicketEvent.CREATE,
       });

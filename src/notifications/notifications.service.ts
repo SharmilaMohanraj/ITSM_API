@@ -38,7 +38,7 @@ export class NotificationsService {
           });
           await this.notificationRepository.save(notification);
           if (event === TicketEvent.CREATE) {
-            await this.emailService.sendTicketCreatedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created');
+            await this.emailService.sendTicketCreatedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, ticket.status.name, 'ticket-created');
           } else if (event === TicketEvent.STATUS_CHANGE) {
             if (newStatus === 'Resolved') {
               await this.emailService.sendTicketResolvedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, 'ticket-resolved');
@@ -46,7 +46,7 @@ export class NotificationsService {
               await this.emailService.sendTicketStatusChangeEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change');
             }
           } else if (event === TicketEvent.ASSIGN) {
-            await this.emailService.sendTicketAssignedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned');
+            await this.emailService.sendTicketAssignedEmail(createdFor.email, createdFor.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, 'ticket-assigned');
           }
         }
         if (notificationRule.recipientType.includes(RecipientType.ASSIGNED_TO)) {
@@ -64,7 +64,7 @@ export class NotificationsService {
               });
               await this.notificationRepository.save(notification);
               if (event === TicketEvent.CREATE) {
-                await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created-manager');
+                await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, ticket.status.name, 'ticket-created-manager');
               } else if (event === TicketEvent.STATUS_CHANGE) {
                 if (newStatus === 'Resolved') {
                   await this.emailService.sendTicketResolvedEmail(user.email, user.fullName, ticket.ticketNumber, 'ticket-resolved-manager');
@@ -72,7 +72,7 @@ export class NotificationsService {
                   await this.emailService.sendTicketStatusChangeEmail(user.email, user.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change-manager');
                 }
               } else if (event === TicketEvent.ASSIGN) {
-                await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned-manager');
+                await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, 'ticket-assigned-manager');
               }
             }
          }
@@ -90,7 +90,7 @@ export class NotificationsService {
             });
             await this.notificationRepository.save(notification);
             if (event === TicketEvent.CREATE) {
-              await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created-manager');
+              await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, ticket.status.name, 'ticket-created-manager');
             } else if (event === TicketEvent.STATUS_CHANGE) {
               if (newStatus === 'Resolved') {
                 await this.emailService.sendTicketResolvedEmail(user.email, user.fullName, ticket.ticketNumber, 'ticket-resolved-manager');
@@ -98,7 +98,7 @@ export class NotificationsService {
                 await this.emailService.sendTicketStatusChangeEmail(user.email, user.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change-manager');
               }
             } else if (event === TicketEvent.ASSIGN) {
-              await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned-manager');
+              await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, 'ticket-assigned-manager');
             }
           }
        }
@@ -130,7 +130,7 @@ export class NotificationsService {
           });
           await this.notificationRepository.save(notification);
           if (event === TicketEvent.CREATE) {
-            await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, ticket.status.name, 'ticket-created-manager');
+            await this.emailService.sendTicketCreatedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, ticket.status.name, 'ticket-created-manager');
           } else if (event === TicketEvent.STATUS_CHANGE) {
             if (newStatus === 'Resolved') {
               await this.emailService.sendTicketResolvedEmail(user.email, user.fullName, ticket.ticketNumber, 'ticket-resolved-manager');
@@ -138,7 +138,7 @@ export class NotificationsService {
               await this.emailService.sendTicketStatusChangeEmail(user.email, user.fullName, ticket.ticketNumber, oldStatus, newStatus, 'ticket-status-change-manager');
             }
           } else if (event === TicketEvent.ASSIGN) {
-            await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category.name, ticket.priority.name, 'ticket-assigned-manager');
+            await this.emailService.sendTicketAssignedEmail(user.email, user.fullName, ticket.ticketNumber, ticket.title, ticket.category?.name || "General", ticket.priority.name, 'ticket-assigned-manager');
           }
         }
       }

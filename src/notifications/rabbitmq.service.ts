@@ -17,8 +17,8 @@ export interface TicketStatusChangeEvent {
 export interface TicketCreateEvent {
   ticketId: string;
   ticketNumber: string;
-  categoryName: string;
-  priorityName: string;
+  categoryName?: string | null;
+  priorityName?: string | null;
   event: TicketEvent;
 }
 
@@ -138,8 +138,10 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
   private async handleTicketCreateEvent(event: TicketCreateEvent): Promise<void> {
     try {
-      // Create notification in database
-      const message = `Ticket ${event.ticketNumber} created in ${event.categoryName} category with ${event.priorityName} priority`;
+      // Create notification in database (category/priority may be null for tickets created without them)
+      const categoryName = event.categoryName ?? 'General';
+      const priorityName = event.priorityName ?? 'N/A';
+      const message = `Ticket ${event.ticketNumber} created in ${categoryName} category with ${priorityName} priority`;
       await this.notificationsService.create(message, event.event, null, null, event.ticketId);
     } catch (error) {
       this.logger.error('Error handling ticket create:', error);
