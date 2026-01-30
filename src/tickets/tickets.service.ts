@@ -231,9 +231,10 @@ const managerWithLessActiveTickets =
   }
 
   async findAll(userId: string, filterDto: FilterTicketsDto): Promise<any> {
-    // Apply filters if provided
+    // List tickets created FOR the user OR created BY the user
     const whereConditions: FindOptionsWhere<Ticket>[] = [
-      { createdForId: userId }
+      { createdForId: userId },
+      { createdById: userId },
     ];
 
     // Apply filters if provided
