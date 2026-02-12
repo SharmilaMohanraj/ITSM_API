@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsUUID, IsString, IsNumber, IsNumberString } from 'class-validator';
 
 export class FilterUsersDto {
   @IsOptional()
@@ -18,10 +18,10 @@ export class FilterUsersDto {
   search?: string;
 
   @IsOptional()
-  @IsNumber()
-  page?: number = 1;
+  @IsNumberString()
+  page?: string;
 
   @IsOptional()
-  @IsNumber()
-  limit?: number = 10;
+  @IsNumberString()
+  limit?: string;
 }

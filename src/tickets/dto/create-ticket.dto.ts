@@ -31,7 +31,7 @@ export class CreateTicketDto {
   statusId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   createdForId?: string;
 
   @IsOptional()

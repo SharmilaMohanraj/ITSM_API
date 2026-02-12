@@ -144,7 +144,9 @@ export class UsersService {
       };
     }
 
-    const { roleId, departmentId, categoryId, search, page = 1, limit = 10 } = query;
+    const { roleId, departmentId, categoryId, search } = query;
+    const page = query.page ? parseInt(query.page, 10) : 1;
+    const limit = query.limit ? parseInt(query.limit, 10) : 10;
     
     // Validate departmentId if provided - must be one of user's departments
     if (departmentId) {

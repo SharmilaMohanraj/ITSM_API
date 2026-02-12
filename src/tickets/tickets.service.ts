@@ -64,8 +64,9 @@ export class TicketsService {
 
     let createdFor: User | null = null;
     if (createTicketDto.createdForId) {
+      // createdForId now carries the user's uniqueKey, not primary id
       createdFor = await this.userRepository.findOne({
-        where: { id: createTicketDto.createdForId },
+        where: { uniqueKey: createTicketDto.createdForId },
       });
       if (!createdFor) {
         throw new NotFoundException('Created for user not found');
@@ -178,8 +179,8 @@ const managerWithLessActiveTickets =
       ticketNumber,
       createdById: userId,
       createdBy,
-      createdForId: createTicketDto.createdForId || userId,
-      createdFor,
+      createdForId: (createdFor ?? createdBy).id,
+      createdFor: createdFor ?? createdBy,
       assignedToManagerId: managerWithLessActiveTickets?.userId || null,
       departmentId: department?.id || null,
       categoryId: category?.id || null,
@@ -239,6 +240,9 @@ const managerWithLessActiveTickets =
   }
 
   async findAll(userId: string, filterDto: FilterTicketsDto): Promise<any> {
+    const page = filterDto.page ? parseInt(filterDto.page, 10) : 1;
+    const limit = filterDto.limit ? parseInt(filterDto.limit, 10) : 10;
+
     // List tickets created FOR the user OR created BY the user
     const whereConditions: FindOptionsWhere<Ticket>[] = [
       { createdForId: userId },
@@ -266,16 +270,16 @@ const managerWithLessActiveTickets =
       where: baseConditions,
       relations: ['assignedToManager', 'createdBy', 'createdFor', 'department', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
-      skip: (filterDto.page - 1) * filterDto.limit,
-      take: filterDto.limit,
+      skip: (page - 1) * limit,
+      take: limit,
     });
     return {
       data,
       meta: {
         total,
-        page: filterDto.page,
-        limit: filterDto.limit,
-        totalPages: Math.ceil(total / filterDto.limit),
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
@@ -673,6 +677,9 @@ const managerWithLessActiveTickets =
     userId: string,
     filterDto: FilterTicketsDto,
   ): Promise<any> {
+    const page = filterDto.page ? parseInt(filterDto.page, 10) : 1;
+    const limit = filterDto.limit ? parseInt(filterDto.limit, 10) : 10;
+
     const whereConditions: FindOptionsWhere<Ticket>[] = [
       { assignedToManagerId: userId },
       { assignedToManagerId: null },
@@ -700,17 +707,17 @@ const managerWithLessActiveTickets =
       where: baseConditions,
       relations: ['assignedToManager', 'assignedToExecutive', 'createdBy','department', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
-      skip: (filterDto.page - 1) * filterDto.limit,
-      take: filterDto.limit,
+      skip: (page - 1) * limit,
+      take: limit,
     });
   
     return {
       data,
       meta: {
         total,
-        page: filterDto.page,
-        limit: filterDto.limit,
-        totalPages: Math.ceil(total / filterDto.limit),
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
@@ -720,6 +727,9 @@ const managerWithLessActiveTickets =
     userId: string,
     filterDto: FilterTicketsDto,
   ): Promise<any> {
+    const page = filterDto.page ? parseInt(filterDto.page, 10) : 1;
+    const limit = filterDto.limit ? parseInt(filterDto.limit, 10) : 10;
+
     const whereConditions: FindOptionsWhere<Ticket>[] = [
       { assignedToExecutiveId: userId } // only assigned to IT Executive
     ];
@@ -746,17 +756,17 @@ const managerWithLessActiveTickets =
       where: baseConditions,
       relations: ['assignedToManager', 'assignedToExecutive', 'createdBy', 'createdFor', 'department', 'category', 'status', 'priority', 'comments'],
       order: { createdAt: 'DESC' },
-      skip: (filterDto.page - 1) * filterDto.limit,
-      take: filterDto.limit,
+      skip: (page - 1) * limit,
+      take: limit,
     });
   
     return {
       data,
       meta: {
         total,
-        page: filterDto.page,
-        limit: filterDto.limit,
-        totalPages: Math.ceil(total / filterDto.limit),
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }

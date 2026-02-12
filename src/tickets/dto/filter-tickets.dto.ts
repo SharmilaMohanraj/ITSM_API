@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsUUID } from 'class-validator';
+import { IsNumberString, IsOptional, IsUUID } from 'class-validator';
 
 export class FilterTicketsDto {
   @IsOptional()
@@ -18,10 +18,10 @@ export class FilterTicketsDto {
   priorityId?: string;
 
   @IsOptional()
-  @IsNumber()
-  page?: number = 1;
+  @IsNumberString()
+  page?: string;
 
   @IsOptional()
-  @IsNumber()
-  limit?: number = 10;
+  @IsNumberString()
+  limit?: string;
 }
