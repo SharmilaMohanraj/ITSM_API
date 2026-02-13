@@ -73,6 +73,31 @@ export class TicketsController {
     );
   }
 
+  @Get('count')
+  getTicketCounts(@Request() req, @Query() filterDto: FilterTicketsDto) {
+    return this.ticketsService.countByStatusForEmployee(req.user.userId, filterDto);
+  }
+
+  @Get('manager/count')
+  @UseGuards(RolesGuard)
+  @Roles('manager')
+  getTicketCountsForManager(
+    @Request() req,
+    @Query() filterDto: FilterTicketsDto,
+  ) {
+    return this.ticketsService.countByStatusForManager(req.user.userId, filterDto);
+  }
+
+  @Get('it-executive/count')
+  @UseGuards(RolesGuard)
+  @Roles('it_executive')
+  getTicketCountsForExecutive(
+    @Request() req,
+    @Query() filterDto: FilterTicketsDto,
+  ) {
+    return this.ticketsService.countByStatusForExecutive(req.user.userId, filterDto);
+  }
+
   @Get('ticket-histories')
   @UseGuards(RolesGuard)
   @Roles('super_admin', 'manager', 'it_executive')
