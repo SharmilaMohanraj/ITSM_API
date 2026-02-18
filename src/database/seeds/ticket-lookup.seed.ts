@@ -205,6 +205,10 @@ const TICKET_STATUSES: StatusSeedData[] = [
     description: 'Ticket has been resolved and is awaiting confirmation',
   },
   {
+    name: 'Approved',
+    description: 'Ticket has been approved by the IT Manager',
+  },
+  {
     name: 'Closed',
     description: 'Ticket has been closed',
   },

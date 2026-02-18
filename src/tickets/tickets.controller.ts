@@ -135,6 +135,19 @@ export class TicketsController {
     return this.ticketsService.findOneByNumber(ticketNumber, req.user.userId, req.user.roles);
   }
 
+  @Patch(':id/approve')
+  @UseGuards(RolesGuard)
+  @Roles('manager')
+  approveTicket(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+  ) {
+    return this.ticketsService.approveTicket(
+      id,
+      req.user.userId,
+    );
+  }
+
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('manager', 'it_executive', 'employee')

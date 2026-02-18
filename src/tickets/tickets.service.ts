@@ -707,6 +707,61 @@ const managerWithLessActiveTickets =
     });
   }
 
+  async approveTicket(
+    id: string,
+    userId: string,
+  ): Promise<Ticket> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['status'],
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const newStatus = await this.statusRepository.findOne({
+      where: { name: 'Approved' },
+    });
+    if (!newStatus) {
+      throw new NotFoundException('Approved status not found');
+    }
+
+    const oldStatus = ticket.status;
+
+    ticket.status = newStatus;
+    ticket.statusId = newStatus.id;
+
+    const updatedTicket = await this.ticketRepository.save(ticket);
+
+    if (!oldStatus || oldStatus.id !== newStatus.id) {
+      const statusHistory = this.ticketHistoryRepository.create({
+        ticketId: ticket.id,
+        ticket,
+        changedById: user.id,
+        changedBy: user,
+        changeType: ChangeType.STATUS_CHANGED,
+        fieldName: 'status',
+        oldValue: oldStatus?.name || oldStatus?.id || 'Unknown',
+        newValue: newStatus.name,
+      });
+      await this.ticketHistoryRepository.save(statusHistory);
+
+      await this.publishStatusChangeEvent(
+        updatedTicket,
+        oldStatus?.name || 'Unknown',
+        newStatus.name,
+      );
+    }
+
+    return updatedTicket;
+  }
+
   async findAllForITManager(
     userId: string,
     filterDto: FilterTicketsDto,
